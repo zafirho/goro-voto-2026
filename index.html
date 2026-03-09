@@ -47,8 +47,9 @@
   }
 
   /* ── SCREENS ── */
-  .screen { display: none; position: relative; z-index: 1; }
-  .screen.active { display: block; }
+  .screen { display: none !important; position: relative; z-index: 1; }
+  .screen.active { display: block !important; }
+  .screen.active.loading-screen { display: flex !important; }
 
   /* ── LOADING ── */
   .loading-screen {
@@ -592,14 +593,14 @@
      FIREBASE SDK
      ══════════════════════════════════════════════════════ -->
 <script type="module">
-// ─────────────────────────────────────────────────────────
-//  ██████╗  ██████╗ ███╗   ██╗███████╗██╗ ██████╗
-//  ██╔════╝██╔═══██╗████╗  ██║██╔════╝██║██╔════╝
-//  ██║     ██║   ██║██╔██╗ ██║█████╗  ██║██║  ███╗
-//  ██║     ██║   ██║██║╚██╗██║██╔══╝  ██║██║   ██║
-//  ╚██████╗╚██████╔╝██║ ╚████║██║     ██║╚██████╔╝
-//   ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝╚═╝     ╚═╝ ╚═════╝
-// ─────────────────────────────────────────────────────────
+// ─── Firebase imports (devono stare PRIMA di tutto) ──────
+import { initializeApp }                          from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider,
+         signInWithPopup, signOut as fbSignOut,
+         onAuthStateChanged }                     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, doc, getDoc,
+         setDoc, collection, getDocs,
+         deleteDoc, serverTimestamp }             from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 // ╔══════════════════════════════════════════════════════╗
 // ║  ZONA CONFIGURAZIONE – compila questi valori         ║
@@ -622,6 +623,7 @@ const ADMIN_UIDS = [
 
 const ADMIN_CODE_HASH = "226131696ca83a97bd34a5f1b854e47ee3b05ffb5bb490dd3cc9157e193bccd5";
 
+
 // ═══════════════════════════════════════════════════════
 //  CANTANTI IN GARA – modifica questo elenco ogni anno
 // ═══════════════════════════════════════════════════════
@@ -633,15 +635,6 @@ const SINGERS = [
 ];
 
 const POINTS = [5, 4, 3, 2, 1];
-
-// ─── Firebase imports ────────────────────────────────────
-import { initializeApp }                          from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, GoogleAuthProvider,
-         signInWithPopup, signOut as fbSignOut,
-         onAuthStateChanged }                     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, doc, getDoc,
-         setDoc, collection, getDocs,
-         deleteDoc, serverTimestamp }             from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 // ─── Init ────────────────────────────────────────────────
 const app  = initializeApp(FIREBASE_CONFIG);
