@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Goro Paese Canoro 2026 – Vota</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold: #C9A84C;
+    --gold-light: #F0D080;
+    --gold-dark: #8B6914;
+    --deep: #0D0D18;
+    --surface: #16162A;
+    --surface2: #1E1E35;
+    --surface3: #26263E;
+    --text: #F0EDE6;
+    --text-muted: #8A8799;
+    --accent: #E85D5D;
+    --green: #4CAF7D;
+    --radius: 18px;
+    --radius-sm: 10px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    height: 100%;
+    background: var(--deep);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    overscroll-behavior: none;
+  }
+
+  /* ── STARS ── */
+  .stars { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 0; }
+  .star {
+    position: absolute; width: 2px; height: 2px;
+    background: var(--gold-light); border-radius: 50%; opacity: 0;
+    animation: twinkle var(--d, 3s) var(--delay, 0s) infinite;
+  }
+  @keyframes twinkle {
+    0%, 100% { opacity: 0; transform: scale(1); }
+    50% { opacity: var(--op, 0.6); transform: scale(1.5); }
+  }
+
+  /* ── SCREENS ── */
+  .screen { display: none; position: relative; z-index: 1; }
+  .screen.active { display: block; }
+
+  /* ── LOADING ── */
+  .loading-screen {
+    min-height: 100svh; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 20px;
+  }
+  .spinner {
+    width: 48px; height: 48px; border-radius: 50%;
+    border: 3px solid var(--surface3);
+    border-top-color: var(--gold);
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { color: var(--text-muted); font-size: 14px; }
+
+  /* ── HERO ── */
+  .hero {
+    min-height: 100svh; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center; padding: 40px 24px 60px; overflow: hidden;
+  }
+  .hero::before {
+    content: ''; position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 50% 0%, rgba(201,168,76,0.18) 0%, transparent 70%),
+      radial-gradient(ellipse 60% 40% at 80% 80%, rgba(201,168,76,0.08) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .hero-badge {
+    display: inline-block;
+    background: rgba(201,168,76,0.12); border: 1px solid rgba(201,168,76,0.3);
+    color: var(--gold); font-size: 11px; font-weight: 500;
+    letter-spacing: 2px; text-transform: uppercase;
+    padding: 6px 16px; border-radius: 100px; margin-bottom: 24px;
+    animation: fadeDown 0.6s ease both;
+  }
+  .hero h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(38px, 10vw, 64px); font-weight: 900;
+    line-height: 1.05; letter-spacing: -1px;
+    animation: fadeDown 0.7s 0.1s ease both;
+  }
+  .hero h1 em { font-style: italic; color: var(--gold); display: block; }
+  .hero-sub {
+    margin-top: 16px; font-size: 15px; color: var(--text-muted);
+    max-width: 300px; animation: fadeDown 0.7s 0.2s ease both;
+  }
+  .hero-cta { margin-top: 40px; animation: fadeDown 0.7s 0.35s ease both; }
+
+  .btn-google {
+    display: inline-flex; align-items: center; gap: 12px;
+    background: #fff; color: #1a1a1a;
+    font-family: 'DM Sans', sans-serif; font-size: 16px; font-weight: 500;
+    padding: 16px 32px; border-radius: 100px; border: none; cursor: pointer;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    transition: transform 0.15s, box-shadow 0.15s;
+    -webkit-appearance: none;
+  }
+  .btn-google:active { transform: scale(0.97); box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
+  .btn-google svg { width: 20px; height: 20px; flex-shrink: 0; }
+
+  .hero-note { margin-top: 16px; font-size: 12px; color: var(--text-muted); animation: fadeDown 0.7s 0.45s ease both; }
+
+  /* ── ALREADY VOTED ── */
+  .already-screen {
+    min-height: 100svh; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center; padding: 40px 24px;
+  }
+  .already-icon { font-size: 64px; margin-bottom: 24px; }
+  .already-screen h2 { font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 900; margin-bottom: 12px; }
+  .already-screen h2 span { color: var(--gold); }
+  .already-screen p { color: var(--text-muted); font-size: 15px; max-width: 280px; }
+  .already-summary { margin-top: 28px; width: 100%; max-width: 340px; }
+
+  /* ── VOTING ── */
+  .voting-screen { min-height: 100svh; padding-bottom: 130px; }
+  .voting-header {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(13,13,24,0.95); backdrop-filter: blur(12px);
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .voting-header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .voting-header h2 { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; }
+  .voting-header h2 span { color: var(--gold); }
+  .user-chip {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--surface2); border-radius: 100px;
+    padding: 5px 10px 5px 5px; font-size: 12px; color: var(--text-muted);
+  }
+  .user-avatar {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--gold); display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700; color: var(--deep);
+  }
+  .progress-bar-wrap { height: 4px; background: var(--surface2); border-radius: 2px; overflow: hidden; }
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--gold-dark), var(--gold));
+    border-radius: 2px; transition: width 0.4s cubic-bezier(.4,0,.2,1);
+  }
+  .progress-label {
+    display: flex; justify-content: space-between;
+    margin-top: 6px; font-size: 11px; color: var(--text-muted);
+  }
+
+  /* ── SLOTS ── */
+  .slots-section { padding: 20px 20px 0; }
+  .section-title {
+    font-size: 11px; font-weight: 500; letter-spacing: 1.5px;
+    text-transform: uppercase; color: var(--text-muted); margin-bottom: 12px;
+  }
+  .slots { display: flex; flex-direction: column; gap: 8px; }
+
+  .slot {
+    display: grid;
+    grid-template-columns: 36px 1fr 70px 52px;
+    align-items: center; gap: 10px;
+    background: var(--surface2);
+    border: 1.5px solid transparent;
+    border-radius: var(--radius);
+    padding: 12px 8px 12px 14px;
+    min-height: 60px;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .slot.filled { background: var(--surface3); border-color: rgba(201,168,76,0.3); }
+
+  .slot-rank {
+    font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 900;
+    line-height: 1; text-align: center;
+  }
+  .slot:nth-child(1) .slot-rank { color: #FFD700; }
+  .slot:nth-child(2) .slot-rank { color: #C0C0C0; }
+  .slot:nth-child(3) .slot-rank { color: #CD7F32; }
+  .slot:nth-child(4) .slot-rank, .slot:nth-child(5) .slot-rank { color: var(--text-muted); }
+
+  .slot-name { font-size: 15px; font-weight: 500; }
+  .slot-empty { font-size: 13px; color: var(--text-muted); font-style: italic; font-weight: 300; }
+
+  .slot-pts {
+    font-size: 11px; font-weight: 500; color: var(--gold);
+    background: rgba(201,168,76,0.1);
+    padding: 4px 8px; border-radius: 100px; text-align: center;
+    white-space: nowrap;
+  }
+
+  /* BIG remove button — full touch target */
+  .slot-remove {
+    width: 44px; height: 44px;
+    background: rgba(232,93,93,0.12);
+    border: 1.5px solid rgba(232,93,93,0.25);
+    border-radius: 12px;
+    color: var(--accent); font-size: 20px; line-height: 1;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s, transform 0.1s;
+    flex-shrink: 0;
+    -webkit-appearance: none;
+    /* invisible when slot is empty */
+    visibility: hidden; pointer-events: none;
+  }
+  .slot.filled .slot-remove { visibility: visible; pointer-events: auto; }
+  .slot-remove:active { background: rgba(232,93,93,0.28); transform: scale(0.92); }
+
+  @keyframes slotPop {
+    0% { transform: scale(0.95); opacity: 0.6; }
+    60% { transform: scale(1.02); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .slot.just-added { animation: slotPop 0.3s cubic-bezier(.4,0,.2,1) both; }
+
+  /* ── SINGERS GRID ── */
+  .singers-section { padding: 24px 20px 0; }
+  .singers-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+  .singer-card {
+    background: var(--surface);
+    border: 1.5px solid rgba(255,255,255,0.07);
+    border-radius: var(--radius);
+    padding: 14px 12px;
+    cursor: pointer;
+    transition: transform 0.15s, border-color 0.2s, background 0.2s;
+    display: flex; align-items: center; gap: 10px;
+    position: relative; overflow: hidden;
+    -webkit-user-select: none; user-select: none;
+  }
+  .singer-card:active:not(.selected):not(.full) { transform: scale(0.95); }
+  .singer-card.selected {
+    background: var(--surface3);
+    border-color: var(--gold);
+    opacity: 0.5; pointer-events: none;
+  }
+  .singer-card.full:not(.selected) { opacity: 0.35; pointer-events: none; }
+
+  .singer-avatar {
+    width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Playfair Display', serif;
+    font-size: 14px; font-weight: 700; color: var(--deep);
+  }
+  .singer-name { font-size: 13px; font-weight: 500; line-height: 1.3; flex: 1; }
+
+  .singer-rank-badge {
+    position: absolute; top: 6px; right: 6px;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--gold); color: var(--deep);
+    font-size: 11px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; transform: scale(0);
+    transition: opacity 0.2s, transform 0.25s cubic-bezier(.175,.885,.32,1.275);
+  }
+  .singer-card.selected .singer-rank-badge { opacity: 1; transform: scale(1); }
+
+  /* ── SUBMIT BAR ── */
+  .submit-bar {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 200;
+    padding: 16px 20px max(16px, env(safe-area-inset-bottom));
+    background: linear-gradient(to top, var(--deep) 55%, transparent);
+  }
+  .btn-submit {
+    width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;
+    background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 100%);
+    color: var(--deep); font-family: 'DM Sans', sans-serif;
+    font-size: 17px; font-weight: 500;
+    padding: 18px; border-radius: 100px; border: none; cursor: pointer;
+    box-shadow: 0 8px 32px rgba(201,168,76,0.4);
+    transition: transform 0.15s, box-shadow 0.15s, opacity 0.25s;
+    -webkit-appearance: none;
+  }
+  .btn-submit:disabled { opacity: 0.25; box-shadow: none; pointer-events: none; }
+  .btn-submit:active:not(:disabled) { transform: scale(0.98); }
+  .btn-submit.loading { pointer-events: none; }
+
+  /* ── THANK YOU ── */
+  .thankyou-screen {
+    min-height: 100svh; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center; padding: 40px 24px; overflow: hidden;
+  }
+  .thankyou-screen::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(ellipse 80% 60% at 50% 30%, rgba(76,175,125,0.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .checkmark-circle {
+    width: 88px; height: 88px; border-radius: 50%;
+    background: rgba(76,175,125,0.15); border: 2px solid var(--green);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 38px; margin-bottom: 28px;
+    animation: popIn 0.5s cubic-bezier(.175,.885,.32,1.275) both;
+  }
+  @keyframes popIn {
+    from { opacity: 0; transform: scale(0.4); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  .thankyou-title {
+    font-family: 'Playfair Display', serif; font-size: 34px; font-weight: 900;
+    animation: fadeUp 0.5s 0.15s ease both;
+  }
+  .thankyou-title span { color: var(--gold); }
+  .thankyou-sub { margin-top: 10px; color: var(--text-muted); font-size: 15px; animation: fadeUp 0.5s 0.25s ease both; }
+
+  /* ── SUMMARY TABLE (shared) ── */
+  .summary-table { margin-top: 28px; width: 100%; max-width: 340px; }
+  .summary-label { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px; }
+  .summary-row {
+    display: grid; grid-template-columns: 32px 1fr 46px;
+    align-items: center; gap: 10px;
+    padding: 12px 14px; background: var(--surface2);
+    border-radius: var(--radius-sm); margin-bottom: 6px;
+  }
+  .s-rank { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 900; }
+  .summary-row:nth-child(1) .s-rank { color: #FFD700; }
+  .summary-row:nth-child(2) .s-rank { color: #C0C0C0; }
+  .summary-row:nth-child(3) .s-rank { color: #CD7F32; }
+  .summary-row:nth-child(4) .s-rank, .summary-row:nth-child(5) .s-rank { color: var(--text-muted); }
+  .s-name { font-size: 14px; font-weight: 500; }
+  .s-pts { font-size: 12px; color: var(--gold); font-weight: 500; text-align: right; }
+
+  /* ── ADMIN ── */
+  .admin-screen { padding: 24px 20px 60px; min-height: 100svh; }
+  .admin-top { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+  .admin-top h2 { font-family: 'Playfair Display', serif; font-size: 22px; flex: 1; }
+  .badge-admin {
+    background: rgba(232,93,93,0.15); color: var(--accent);
+    font-size: 10px; padding: 3px 10px; border-radius: 100px;
+    border: 1px solid rgba(232,93,93,0.3); letter-spacing: 1px; text-transform: uppercase;
+  }
+  .btn-icon {
+    width: 40px; height: 40px; background: var(--surface2); border: none;
+    border-radius: 10px; color: var(--text-muted); font-size: 18px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    -webkit-appearance: none;
+  }
+
+  .stat-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+  .stat-card { background: var(--surface2); border-radius: var(--radius); padding: 16px; text-align: center; }
+  .stat-value { font-family: 'Playfair Display', serif; font-size: 36px; font-weight: 900; color: var(--gold); line-height: 1; }
+  .stat-label { font-size: 11px; color: var(--text-muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 1px; }
+
+  .ranking-card { background: var(--surface2); border-radius: var(--radius); overflow: hidden; margin-bottom: 16px; }
+  .ranking-head {
+    display: grid; grid-template-columns: 40px 1fr 56px;
+    padding: 10px 16px; font-size: 10px; text-transform: uppercase;
+    letter-spacing: 1px; color: var(--text-muted);
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .ranking-row {
+    display: grid; grid-template-columns: 40px 1fr 56px;
+    padding: 13px 16px; border-bottom: 1px solid rgba(255,255,255,0.04);
+    align-items: center; transition: background 0.15s;
+  }
+  .ranking-row:last-child { border-bottom: none; }
+  .ranking-row:first-child { background: rgba(201,168,76,0.07); }
+  .r-pos { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 900; color: var(--text-muted); }
+  .ranking-row:nth-child(1) .r-pos { color: #FFD700; }
+  .ranking-row:nth-child(2) .r-pos { color: #C0C0C0; }
+  .ranking-row:nth-child(3) .r-pos { color: #CD7F32; }
+  .r-info { min-width: 0; }
+  .r-name { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .r-bar-wrap { height: 3px; background: var(--surface3); border-radius: 2px; margin-top: 5px; overflow: hidden; }
+  .r-bar { height: 100%; background: linear-gradient(90deg, var(--gold-dark), var(--gold)); border-radius: 2px; transition: width 0.6s ease; }
+  .r-pts { text-align: right; font-size: 15px; font-weight: 500; color: var(--gold); }
+
+  .admin-actions { display: flex; flex-direction: column; gap: 10px; }
+  .btn-secondary {
+    width: 100%; padding: 14px; background: var(--surface2);
+    border: 1px solid rgba(255,255,255,0.08); border-radius: 100px;
+    color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 15px;
+    cursor: pointer; transition: background 0.15s; -webkit-appearance: none;
+  }
+  .btn-secondary:active { background: var(--surface3); }
+  .btn-danger { background: rgba(232,93,93,0.08); border-color: rgba(232,93,93,0.25); color: var(--accent); }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed; bottom: 110px; left: 50%;
+    transform: translateX(-50%) translateY(16px);
+    background: var(--surface3); border: 1px solid rgba(255,255,255,0.12);
+    color: var(--text); padding: 12px 22px; border-radius: 100px;
+    font-size: 14px; white-space: nowrap; opacity: 0;
+    transition: opacity 0.28s, transform 0.28s; pointer-events: none; z-index: 999;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── OVERLAY ── */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.82);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 500; padding: 24px; backdrop-filter: blur(8px);
+  }
+  .overlay-box {
+    background: var(--surface); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: var(--radius); padding: 32px 24px;
+    width: 100%; max-width: 320px; text-align: center;
+  }
+  .overlay-box h3 { font-family: 'Playfair Display', serif; font-size: 22px; margin-bottom: 8px; }
+  .overlay-box p { color: var(--text-muted); font-size: 14px; margin-bottom: 24px; }
+  .overlay-input {
+    width: 100%; background: var(--surface2);
+    border: 1.5px solid rgba(255,255,255,0.1); border-radius: var(--radius-sm);
+    color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 16px;
+    padding: 14px 16px; margin-bottom: 12px; outline: none; -webkit-appearance: none;
+    transition: border-color 0.2s;
+  }
+  .overlay-input:focus { border-color: var(--gold); }
+  .btn-overlay-confirm {
+    width: 100%; padding: 14px;
+    background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 100%);
+    border: none; border-radius: 100px; color: var(--deep);
+    font-family: 'DM Sans', sans-serif; font-size: 16px; font-weight: 500;
+    cursor: pointer; -webkit-appearance: none;
+  }
+  .btn-overlay-cancel {
+    width: 100%; padding: 12px; background: none; border: none;
+    color: var(--text-muted); font-size: 14px; cursor: pointer;
+    margin-top: 8px; -webkit-appearance: none;
+  }
+
+  /* ── AVATAR COLORS ── */
+  .av-1{background:#E85D5D} .av-2{background:#E8935D} .av-3{background:#C9A84C}
+  .av-4{background:#5DB96E} .av-5{background:#5D9BE8} .av-6{background:#9B5DE8}
+  .av-7{background:#E85DA3} .av-8{background:#5DCFE8} .av-9{background:#E8D65D}
+  .av-10{background:#5DE8C0} .av-11{background:#E87D5D} .av-12{background:#8BE85D}
+  .av-13{background:#5D6BE8} .av-14{background:#E85D7A} .av-15{background:#5DE87A}
+  .av-16{background:#C45DE8}
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeDown {
+    from { opacity:0; transform:translateY(-16px); }
+    to { opacity:1; transform:translateY(0); }
+  }
+  @keyframes fadeUp {
+    from { opacity:0; transform:translateY(16px); }
+    to { opacity:1; transform:translateY(0); }
+  }
+</style>
+</head>
+<body>
+
+<div class="stars" id="stars"></div>
+<div class="toast" id="toast"></div>
+
+<!-- ══════════════════ LOADING ══════════════════ -->
+<div class="screen loading-screen active" id="screen-loading">
+  <div class="spinner"></div>
+  <div class="loading-text">Caricamento…</div>
+</div>
+
+<!-- ══════════════════ HERO ══════════════════════ -->
+<div class="screen hero" id="screen-hero">
+  <div class="hero-badge">🎵 Edizione 2026</div>
+  <h1>Goro<br><em>Paese Canoro</em></h1>
+  <p class="hero-sub">Scegli i tuoi 5 cantanti preferiti e assegna loro un punteggio</p>
+  <div class="hero-cta">
+    <button class="btn-google" onclick="signInWithGoogle()">
+      <!-- Google G logo SVG -->
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+      </svg>
+      Accedi con Google per votare
+    </button>
+  </div>
+  <p class="hero-note">Un account Google = un voto • Dati protetti</p>
+  <!-- Hidden admin access: tap 5 times on the note -->
+  <div id="admin-tap" style="position:absolute;bottom:24px;right:24px;width:48px;height:48px;" onclick="adminTap()"></div>
+</div>
+
+<!-- ══════════════════ ALREADY VOTED ════════════════ -->
+<div class="screen already-screen" id="screen-already">
+  <div class="already-icon">🗳️</div>
+  <h2>Hai già <span>votato!</span></h2>
+  <p>Il tuo voto è stato registrato. Grazie per aver partecipato a Goro Paese Canoro 2026.</p>
+  <div class="summary-table" id="already-summary"></div>
+</div>
+
+<!-- ══════════════════ VOTING ════════════════════════ -->
+<div class="screen voting-screen" id="screen-voting">
+  <div class="voting-header">
+    <div class="voting-header-top">
+      <h2>I tuoi <span>5 preferiti</span></h2>
+      <div class="user-chip">
+        <div class="user-avatar" id="user-initials">?</div>
+        <span id="user-name-short">…</span>
+      </div>
+    </div>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill" id="progress-fill" style="width:0%"></div>
+    </div>
+    <div class="progress-label">
+      <span id="progress-text">0 di 5 selezionati</span>
+      <span id="progress-pts">0 punti assegnati</span>
+    </div>
+  </div>
+
+  <div class="slots-section">
+    <div class="section-title">La tua classifica</div>
+    <div class="slots" id="slots"></div>
+  </div>
+
+  <div class="singers-section">
+    <div class="section-title">Cantanti in gara</div>
+    <div class="singers-grid" id="singers-grid"></div>
+  </div>
+
+  <div class="submit-bar">
+    <button class="btn-submit" id="btn-submit" disabled onclick="submitVote()">
+      Conferma il voto 🎤
+    </button>
+  </div>
+</div>
+
+<!-- ══════════════════ THANK YOU ════════════════════ -->
+<div class="screen thankyou-screen" id="screen-thanks">
+  <div class="checkmark-circle">✓</div>
+  <h2 class="thankyou-title">Grazie<br><span>per aver votato!</span></h2>
+  <p class="thankyou-sub">Il tuo voto è stato registrato con successo.</p>
+  <div class="summary-table" id="thanks-summary"></div>
+</div>
+
+<!-- ══════════════════ ADMIN ════════════════════════ -->
+<div class="screen admin-screen" id="screen-admin">
+  <div class="admin-top">
+    <h2>Classifica live</h2>
+    <span class="badge-admin">Admin</span>
+    <button class="btn-icon" onclick="refreshAdmin()" title="Aggiorna">↻</button>
+  </div>
+
+  <div class="stat-cards">
+    <div class="stat-card">
+      <div class="stat-value" id="stat-votes">–</div>
+      <div class="stat-label">Voti totali</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="stat-pts">–</div>
+      <div class="stat-label">Punti distribuiti</div>
+    </div>
+  </div>
+
+  <div class="ranking-card">
+    <div class="ranking-head">
+      <span>#</span><span>Cantante</span><span style="text-align:right">Punti</span>
+    </div>
+    <div id="admin-ranking-rows"></div>
+  </div>
+
+  <div class="admin-actions">
+    <button class="btn-secondary" onclick="exportCSV()">📥 Esporta CSV</button>
+    <button class="btn-secondary btn-danger" onclick="confirmReset()">🗑️ Azzera tutti i voti</button>
+    <button class="btn-secondary" onclick="signOut()">← Esci</button>
+  </div>
+</div>
+
+<!-- ══════════════════ ADMIN LOGIN OVERLAY ══════════════ -->
+<div class="overlay" id="overlay-admin" style="display:none">
+  <div class="overlay-box">
+    <h3>Area Admin</h3>
+    <p>Inserisci il codice di accesso per vedere la classifica in tempo reale</p>
+    <input type="password" class="overlay-input" id="admin-pwd-input"
+           placeholder="Codice admin" maxlength="30"
+           onkeydown="if(event.key==='Enter') checkAdminCode()">
+    <button class="btn-overlay-confirm" onclick="checkAdminCode()">Accedi</button>
+    <button class="btn-overlay-cancel" onclick="closeAdminOverlay()">Annulla</button>
+  </div>
+</div>
+
+<!-- ══════════════════ CONFIRM RESET OVERLAY ════════════ -->
+<div class="overlay" id="overlay-reset" style="display:none">
+  <div class="overlay-box">
+    <h3>Sei sicuro?</h3>
+    <p>Tutti i voti verranno cancellati definitivamente da Firebase. L'azione è irreversibile.</p>
+    <button class="btn-overlay-confirm" style="background:linear-gradient(135deg,#E85D5D,#a03030);color:#fff" onclick="resetVotes()">Sì, azzera tutto</button>
+    <button class="btn-overlay-cancel" onclick="document.getElementById('overlay-reset').style.display='none'">Annulla</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     FIREBASE SDK
+     ══════════════════════════════════════════════════════ -->
+<script type="module">
+// ─────────────────────────────────────────────────────────
+//  ██████╗  ██████╗ ███╗   ██╗███████╗██╗ ██████╗
+//  ██╔════╝██╔═══██╗████╗  ██║██╔════╝██║██╔════╝
+//  ██║     ██║   ██║██╔██╗ ██║█████╗  ██║██║  ███╗
+//  ██║     ██║   ██║██║╚██╗██║██╔══╝  ██║██║   ██║
+//  ╚██████╗╚██████╔╝██║ ╚████║██║     ██║╚██████╔╝
+//   ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝╚═╝     ╚═╝ ╚═════╝
+// ─────────────────────────────────────────────────────────
+
+// ╔══════════════════════════════════════════════════════╗
+// ║  ZONA CONFIGURAZIONE – compila questi valori         ║
+// ║  con i dati del tuo progetto Firebase                ║
+// ╚══════════════════════════════════════════════════════╝
+const firebaseConfig = {
+  apiKey: "AIzaSyAFvDuG0glouoEhN1Hqrd68c6F30A11su4",
+  authDomain: "goro-paese-canoro-2026.firebaseapp.com",
+  projectId: "goro-paese-canoro-2026",
+  storageBucket: "goro-paese-canoro-2026.firebasestorage.app",
+  messagingSenderId: "782054899768",
+  appId: "1:782054899768:web:84473d4d299c4f42fa26cd"
+};
+
+// UID degli account Google autorizzati come admin
+// Aggiungi qui il tuo UID (lo trovi nella console Firebase > Authentication)
+const ADMIN_UIDS = [
+  "tpT7d1plF6XABCZiHyKQFrbDhIA3"
+];
+
+const ADMIN_CODE_HASH = "226131696ca83a97bd34a5f1b854e47ee3b05ffb5bb490dd3cc9157e193bccd5";
+
+// ═══════════════════════════════════════════════════════
+//  CANTANTI IN GARA – modifica questo elenco ogni anno
+// ═══════════════════════════════════════════════════════
+const SINGERS = [
+  "Marco Rossi",      "Giulia Ferrari",   "Luca Bianchi",     "Sara Conti",
+  "Andrea Ricci",     "Valentina Greco",  "Matteo Bruno",     "Chiara Russo",
+  "Davide Lombardi",  "Elena Marini",     "Francesco Esposito","Alice Gallo",
+  "Stefano Costa",    "Martina Fontana",  "Nicola Serra",     "Giorgia Riva"
+];
+
+const POINTS = [5, 4, 3, 2, 1];
+
+// ─── Firebase imports ────────────────────────────────────
+import { initializeApp }                          from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider,
+         signInWithPopup, signOut as fbSignOut,
+         onAuthStateChanged }                     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, doc, getDoc,
+         setDoc, collection, getDocs,
+         deleteDoc, serverTimestamp }             from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// ─── Init ────────────────────────────────────────────────
+const app  = initializeApp(FIREBASE_CONFIG);
+const auth = getAuth(app);
+const db   = getFirestore(app);
+
+let currentUser = null;
+
+// ─── Auth state listener ─────────────────────────────────
+onAuthStateChanged(auth, async (user) => {
+  if (user) {
+    currentUser = user;
+    await handleUserLoggedIn(user);
+  } else {
+    currentUser = null;
+    showScreen('screen-hero');
+  }
+});
+
+async function handleUserLoggedIn(user) {
+  // Check if already voted
+  const voteRef  = doc(db, "votes", user.uid);
+  const voteSnap = await getDoc(voteRef);
+
+  if (voteSnap.exists()) {
+    // Already voted — show summary
+    const data = voteSnap.data();
+    renderSummaryTable('already-summary', data.vote);
+    showScreen('screen-already');
+  } else if (ADMIN_UIDS.includes(user.uid)) {
+    // Is admin — go straight to admin panel
+    showScreen('screen-admin');
+    refreshAdmin();
+  } else {
+    // New voter
+    setupVotingScreen(user);
+    showScreen('screen-voting');
+  }
+}
+
+// ─── Google Sign In ──────────────────────────────────────
+window.signInWithGoogle = async function() {
+  try {
+    const provider = new GoogleAuthProvider();
+    await signInWithPopup(auth, provider);
+  } catch (e) {
+    showToast('Accesso annullato o non riuscito');
+  }
+};
+
+window.signOut = async function() {
+  await fbSignOut(auth);
+  showScreen('screen-hero');
+};
+
+// ─── Voting screen setup ─────────────────────────────────
+function setupVotingScreen(user) {
+  // User chip
+  const name  = user.displayName || user.email || 'Utente';
+  const parts = name.split(' ');
+  const init  = (parts[0][0] + (parts[1]?.[0] || '')).toUpperCase();
+  document.getElementById('user-initials').textContent   = init;
+  document.getElementById('user-name-short').textContent = parts[0];
+
+  selections = [null, null, null, null, null];
+  renderSlots();
+  renderSingers();
+  updateProgress();
+}
+
+// ─── STATE ───────────────────────────────────────────────
+let selections = [null, null, null, null, null];
+
+function renderSlots() {
+  const container = document.getElementById('slots');
+  container.innerHTML = '';
+  const labels = ['1°','2°','3°','4°','5°'];
+  const pts    = [5,4,3,2,1];
+  for (let i = 0; i < 5; i++) {
+    const div = document.createElement('div');
+    div.className = 'slot';
+    div.dataset.pos = i;
+    div.innerHTML = `
+      <span class="slot-rank">${labels[i]}</span>
+      <span class="slot-name slot-empty">Tocca un cantante</span>
+      <span class="slot-pts">${pts[i]} pt</span>
+      <button class="slot-remove" onclick="removeFromSlot(${i})" aria-label="Rimuovi">✕</button>
+    `;
+    container.appendChild(div);
+  }
+}
+
+function renderSingers() {
+  const grid = document.getElementById('singers-grid');
+  grid.innerHTML = '';
+  SINGERS.forEach((name, i) => {
+    const initials = name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+    const div = document.createElement('div');
+    div.className = 'singer-card';
+    div.id = `sc-${i}`;
+    div.onclick = () => selectSinger(i);
+    div.innerHTML = `
+      <div class="singer-avatar av-${(i%16)+1}">${initials}</div>
+      <div class="singer-name">${name}</div>
+      <div class="singer-rank-badge" id="srb-${i}"></div>
+    `;
+    grid.appendChild(div);
+  });
+}
+
+// ─── Selection ───────────────────────────────────────────
+window.selectSinger = function(idx) {
+  const next = selections.indexOf(null);
+  if (next === -1) { showToast('Hai già scelto 5 cantanti'); return; }
+  selections[next] = idx;
+  updateAll();
+};
+
+window.removeFromSlot = function(pos) {
+  // Remove ONLY this slot; do NOT shift others
+  selections[pos] = null;
+  updateAll();
+};
+
+function updateAll() {
+  // Update slots
+  const labels = ['1°','2°','3°','4°','5°'];
+  for (let i = 0; i < 5; i++) {
+    const slot    = document.querySelector(`.slot[data-pos="${i}"]`);
+    const nameEl  = slot.querySelector('.slot-name');
+    const singerIdx = selections[i];
+
+    if (singerIdx !== null) {
+      slot.classList.add('filled');
+      nameEl.textContent = SINGERS[singerIdx];
+      nameEl.classList.remove('slot-empty');
+    } else {
+      slot.classList.remove('filled');
+      nameEl.textContent = 'Tocca un cantante';
+      nameEl.classList.add('slot-empty');
+    }
+  }
+
+  // Update singer cards
+  SINGERS.forEach((_, i) => {
+    const card  = document.getElementById(`sc-${i}`);
+    const badge = document.getElementById(`srb-${i}`);
+    const pos   = selections.indexOf(i);
+    const anyNull = selections.includes(null);
+
+    if (pos !== -1) {
+      card.classList.add('selected');
+      card.classList.remove('full');
+      badge.textContent = pos + 1;
+    } else {
+      card.classList.remove('selected');
+      card.classList.toggle('full', !anyNull);
+      badge.textContent = '';
+    }
+  });
+
+  updateProgress();
+}
+
+function updateProgress() {
+  const filled = selections.filter(s => s !== null).length;
+  const pts    = POINTS.slice(0, filled).reduce((a,b) => a+b, 0);
+  document.getElementById('progress-fill').style.width = (filled/5*100)+'%';
+  document.getElementById('progress-text').textContent = `${filled} di 5 selezionati`;
+  document.getElementById('progress-pts').textContent  = `${pts} punti assegnati`;
+  document.getElementById('btn-submit').disabled       = filled < 5 || selections.includes(null);
+}
+
+// ─── Submit ──────────────────────────────────────────────
+window.submitVote = async function() {
+  if (!currentUser) return;
+  const btn = document.getElementById('btn-submit');
+  btn.classList.add('loading');
+  btn.textContent = 'Salvataggio…';
+
+  const vote = selections.map(i => SINGERS[i]);
+
+  try {
+    await setDoc(doc(db, "votes", currentUser.uid), {
+      vote,
+      uid:       currentUser.uid,
+      email:     currentUser.email,
+      name:      currentUser.displayName,
+      timestamp: serverTimestamp()
+    });
+
+    renderSummaryTable('thanks-summary', vote);
+    showScreen('screen-thanks');
+  } catch(e) {
+    showToast('Errore durante il salvataggio. Riprova.');
+    btn.classList.remove('loading');
+    btn.textContent = 'Conferma il voto 🎤';
+  }
+};
+
+function renderSummaryTable(containerId, vote) {
+  const labels = ['1°','2°','3°','4°','5°'];
+  const pts    = [5,4,3,2,1];
+  const el     = document.getElementById(containerId);
+  el.innerHTML = '<div class="summary-label">Il tuo voto</div>' +
+    vote.map((name,i) => `
+      <div class="summary-row">
+        <span class="s-rank">${labels[i]}</span>
+        <span class="s-name">${name}</span>
+        <span class="s-pts">+${pts[i]} pt</span>
+      </div>`).join('');
+}
+
+// ─── ADMIN ───────────────────────────────────────────────
+let adminTapCount = 0;
+let adminTapTimer = null;
+
+window.adminTap = function() {
+  adminTapCount++;
+  clearTimeout(adminTapTimer);
+  if (adminTapCount >= 5) {
+    adminTapCount = 0;
+    if (currentUser && ADMIN_UIDS.includes(currentUser.uid)) {
+      showScreen('screen-admin'); refreshAdmin();
+    } else {
+      document.getElementById('overlay-admin').style.display = 'flex';
+      setTimeout(() => document.getElementById('admin-pwd-input').focus(), 120);
+    }
+  }
+  adminTapTimer = setTimeout(() => { adminTapCount = 0; }, 2000);
+};
+
+window.closeAdminOverlay = function() {
+  document.getElementById('overlay-admin').style.display = 'none';
+  document.getElementById('admin-pwd-input').value = '';
+};
+
+window.checkAdminCode = async function() {
+  const raw  = document.getElementById('admin-pwd-input').value;
+  const hash = await sha256(raw);
+  if (hash === ADMIN_CODE_HASH) {
+    closeAdminOverlay();
+    showScreen('screen-admin');
+    refreshAdmin();
+  } else {
+    showToast('Codice non corretto');
+    document.getElementById('admin-pwd-input').value = '';
+  }
+};
+
+async function sha256(message) {
+  const msgBuffer  = new TextEncoder().encode(message);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+  return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+window.refreshAdmin = async function() {
+  document.getElementById('admin-ranking-rows').innerHTML =
+    '<div style="padding:20px;text-align:center;color:var(--text-muted)">Caricamento…</div>';
+  try {
+    const snap  = await getDocs(collection(db, "votes"));
+    const votes = [];
+    snap.forEach(d => votes.push(d.data()));
+
+    const scores = {};
+    SINGERS.forEach(s => scores[s] = 0);
+    votes.forEach(({vote}) => {
+      vote.forEach((name, i) => { if (scores[name] !== undefined) scores[name] += POINTS[i]; });
+    });
+    const ranking = Object.entries(scores).sort((a,b) => b[1]-a[1]);
+    const maxPts  = ranking[0]?.[1] || 1;
+
+    document.getElementById('stat-votes').textContent = votes.length;
+    document.getElementById('stat-pts').textContent   = votes.length * 15;
+
+    const container = document.getElementById('admin-ranking-rows');
+    container.innerHTML = '';
+    ranking.forEach(([name, pts], i) => {
+      const pct = maxPts > 0 ? (pts/maxPts*100).toFixed(0) : 0;
+      const row = document.createElement('div');
+      row.className = 'ranking-row';
+      row.innerHTML = `
+        <span class="r-pos">${i+1}</span>
+        <div class="r-info">
+          <div class="r-name">${name}</div>
+          <div class="r-bar-wrap"><div class="r-bar" style="width:${pct}%"></div></div>
+        </div>
+        <span class="r-pts">${pts}</span>
+      `;
+      container.appendChild(row);
+    });
+  } catch(e) {
+    document.getElementById('admin-ranking-rows').innerHTML =
+      '<div style="padding:20px;text-align:center;color:var(--accent)">Errore nel caricamento. Controlla la connessione.</div>';
+  }
+};
+
+window.exportCSV = async function() {
+  try {
+    const snap  = await getDocs(collection(db, "votes"));
+    if (snap.empty) { showToast('Nessun voto da esportare'); return; }
+
+    let csv = 'UID,Email,Nome,1° posto,2° posto,3° posto,4° posto,5° posto,Timestamp\n';
+    snap.forEach(d => {
+      const v   = d.data();
+      const ts  = v.timestamp?.toDate?.().toLocaleString('it-IT') || '–';
+      csv += `"${v.uid}","${v.email}","${v.name}",${v.vote.map(n=>`"${n}"`).join(',')},${ts}\n`;
+    });
+
+    const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = 'goro_voti_2026.csv'; a.click();
+    URL.revokeObjectURL(url);
+  } catch(e) { showToast('Errore durante l\'esportazione'); }
+};
+
+window.confirmReset = function() {
+  document.getElementById('overlay-reset').style.display = 'flex';
+};
+
+window.resetVotes = async function() {
+  document.getElementById('overlay-reset').style.display = 'none';
+  try {
+    const snap = await getDocs(collection(db, "votes"));
+    const dels = snap.docs.map(d => deleteDoc(doc(db,"votes",d.id)));
+    await Promise.all(dels);
+    refreshAdmin();
+    showToast('Tutti i voti azzerati');
+  } catch(e) { showToast('Errore durante il reset'); }
+};
+
+// ─── Utils ───────────────────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+window.showScreen = showScreen;
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+window.showToast = showToast;
+
+// Stars
+(function generateStars() {
+  const c = document.getElementById('stars');
+  for (let i = 0; i < 55; i++) {
+    const s = document.createElement('div');
+    s.className = 'star';
+    s.style.cssText = `left:${Math.random()*100}%;top:${Math.random()*100}%;
+      --d:${2+Math.random()*4}s;--delay:${Math.random()*5}s;--op:${0.3+Math.random()*0.5}`;
+    c.appendChild(s);
+  }
+})();
+
+</script>
+</body>
+</html>
