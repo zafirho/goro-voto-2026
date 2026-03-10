@@ -323,5 +323,5 @@ html, body { min-height: 100%; background: var(--deep); color: var(--text); font
 }
 
 /* ── reCAPTCHA badge — nascosto di default, visibile solo in schermata phone ── */
-.grecaptcha-badge { visibility: hidden !important; opacity: 0 !important; transition: opacity .3s; }
-body.show-recaptcha .grecaptcha-badge { visibility: visible !important; opacity: 1 !important; }
+.grecaptcha-badge { visibility: hidden !important; }
+body.show-recaptcha .grecaptcha-badge { visibility: hidden !important; }
