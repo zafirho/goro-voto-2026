@@ -5,7 +5,7 @@ import {
   auth, db, showScreen, showToast,
   DEFAULT_SINGERS, POINTS, SERATA_LABELS
 } from './firebase-init.js';
-import { isAdmin, signOutUser } from './auth.js';
+import { signOutUser } from './auth.js';
 import { onAuthStateChanged }   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {
   doc, getDoc, setDoc, getDocs,
@@ -22,25 +22,41 @@ export async function initAdminApp() {
   onAuthStateChanged(auth, async user => {
     if (!user) { showScreen('screen-admin-login'); return; }
 
-    // Debug temporaneo — rimuovere dopo fix
+    // ── Controllo admin con debug visibile a schermo ──
     let adminResult = false;
+    let debugInfo   = '';
     try {
-      const snap = await getDoc(doc(db, 'admins', user.uid));
+      const snap  = await getDoc(doc(db, 'admins', user.uid));
       adminResult = snap.exists();
-      console.log('isAdmin check — uid:', user.uid, '| doc exists:', snap.exists(), '| data:', snap.data());
+      debugInfo   = 'uid: '    + user.uid
+                  + '\nexists: ' + snap.exists()
+                  + '\ndata: '   + JSON.stringify(snap.data());
     } catch(e) {
-      console.error('isAdmin ERROR:', e.code, e.message);
-      showToast('Errore Firestore: ' + e.code);
-      return;
+      debugInfo = 'ERRORE FIRESTORE\ncode: ' + e.code
+                + '\nmessage: ' + e.message
+                + '\nuid usato: ' + user.uid;
     }
 
     if (!adminResult) {
-      showToast('Non autorizzato — uid: ' + user.uid.slice(0,8) + '…');
-      setTimeout(() => window.location.href = 'index.html', 3000);
+      // Mostra debug fisso — nessun redirect automatico
+      document.body.innerHTML =
+        '<div style="font-family:monospace;background:#0D0D18;color:#F0EDE6;min-height:100vh;'
+      + 'display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px">'
+      + '<div style="color:#E85D5D;font-size:20px;margin-bottom:20px">DEBUG — accesso negato</div>'
+      + '<pre style="background:#1E1E35;border:1px solid #C9A84C;border-radius:12px;padding:20px;'
+      + 'font-size:14px;white-space:pre-wrap;word-break:break-all;max-width:440px;width:100%">'
+      + debugInfo
+      + '</pre>'
+      + '<p style="color:#8A8799;font-size:13px;margin-top:16px;max-width:440px;text-align:center">'
+      + 'Nessun redirect. Copia il testo sopra e mandamelo.</p>'
+      + '<button onclick="window.location.href=\'index.html\'" '
+      + 'style="margin-top:20px;background:#1E1E35;color:#F0EDE6;border:1px solid rgba(255,255,255,.2);'
+      + 'border-radius:100px;padding:12px 24px;cursor:pointer;font-size:14px">← Torna al sito</button>'
+      + '</div>';
       return;
     }
 
-    // Carica config e cantanti, poi mostra pannello
+    // Accesso OK — carica tutto e mostra pannello
     await Promise.all([loadConfig(), loadAllSingers()]);
     renderAdminPanel(user);
     showScreen('screen-admin');
@@ -97,23 +113,14 @@ function renderSingersEditor(serata) {
 
 // ── Render pannello admin ─────────────────────
 function renderAdminPanel(user) {
-  // Utente loggato
   const name = user.displayName || user.email || 'Admin';
   const init = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
   document.getElementById('admin-user-initials').textContent = init;
-  document.getElementById('admin-user-name').textContent = name.split(' ')[0];
-
-  // Serata switcher
+  document.getElementById('admin-user-name').textContent     = name.split(' ')[0];
   updateSerataButtons();
-
-  // Switches
   updateSwitches();
-
-  // Editors cantanti
   renderSingersEditor(1);
   renderSingersEditor(2);
-
-  // Classifica
   refreshRanking();
 }
 
@@ -121,17 +128,14 @@ function updateSerataButtons() {
   [1,2,3].forEach(i => {
     document.getElementById(`btn-s${i}`)?.classList.toggle('active', i === currentSerata);
   });
-  // Mostra/nascondi pulsante svela solo in serata 3
   const revealBtn = document.getElementById('btn-reveal-wrap');
   if (revealBtn) revealBtn.style.display = currentSerata === 3 ? '' : 'none';
 }
 
 function updateSwitches() {
-  setSwitchState('toggle-voto',    appConfig.votoAperto  !== false);
-  setSwitchState('toggle-top5',    !!appConfig.mostraTop5);
-  setSwitchState('toggle-svela',   !!appConfig.svelaClassifica);
-
-  // top5 e svela abilitati solo se voto chiuso
+  setSwitchState('toggle-voto',  appConfig.votoAperto !== false);
+  setSwitchState('toggle-top5',  !!appConfig.mostraTop5);
+  setSwitchState('toggle-svela', !!appConfig.svelaClassifica);
   const votoAperto = appConfig.votoAperto !== false;
   document.getElementById('toggle-top5-wrap')?.classList.toggle('disabled', votoAperto);
   document.getElementById('toggle-svela-wrap')?.classList.toggle('disabled', votoAperto || currentSerata !== 3);
@@ -145,10 +149,7 @@ function setSwitchState(id, state) {
 // ── Switch handlers ───────────────────────────
 async function toggleVoto(checked) {
   await saveConfig({ votoAperto: checked });
-  if (checked) {
-    // Se si riapre il voto, disabilita top5 e svela
-    await saveConfig({ mostraTop5: false, svelaClassifica: false });
-  }
+  if (checked) await saveConfig({ mostraTop5: false, svelaClassifica: false });
   updateSwitches();
   showToast(checked ? '🟢 Votazioni aperte' : '🔴 Votazioni chiuse');
 }
@@ -183,27 +184,21 @@ async function refreshRanking() {
   const rows = document.getElementById('admin-ranking-rows');
   if (!rows) return;
   rows.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted)">Caricamento…</div>';
-
   try {
-    const snap     = await getDocs(collection(db, `votes_s${currentSerata}`));
-    const allVotes = []; snap.forEach(d => allVotes.push(d.data()));
-
+    const snap        = await getDocs(collection(db, `votes_s${currentSerata}`));
+    const allVotes    = []; snap.forEach(d => allVotes.push(d.data()));
     const activeSingers = currentSerata === 3
       ? [...singers[1], ...singers[2]]
       : singers[currentSerata];
-
     const scores = {};
     activeSingers.forEach(s => scores[s] = 0);
     allVotes.forEach(({vote}) =>
       vote?.forEach((name,i) => { if (scores[name] !== undefined) scores[name] += POINTS[i]; })
     );
-
     const ranking = Object.entries(scores).sort((a,b) => b[1]-a[1]);
     const maxPts  = ranking[0]?.[1] || 1;
-
     document.getElementById('stat-votes').textContent = allVotes.length;
     document.getElementById('stat-label').textContent = `Voti — ${SERATA_LABELS[currentSerata]}`;
-
     rows.innerHTML = '';
     ranking.forEach(([name,pts],i) => {
       const pct = maxPts > 0 ? (pts/maxPts*100).toFixed(0) : 0;
@@ -253,14 +248,14 @@ async function resetVotes() {
 }
 
 // ── Expose to window ──────────────────────────
-window.setSerataAdmin    = setSerata;
-window.toggleVoto        = e => toggleVoto(e.target.checked);
-window.toggleTop5        = e => toggleTop5(e.target.checked);
-window.toggleSvela       = e => toggleSvela(e.target.checked);
-window.refreshRanking    = refreshRanking;
-window.exportCSV         = exportCSV;
-window.confirmReset      = () => document.getElementById('overlay-reset').style.display = 'flex';
-window.resetVotes        = resetVotes;
-window.saveSingersAdmin  = saveSingers;
-window.signOutAdmin      = signOutUser;
-window.cancelReset       = () => document.getElementById('overlay-reset').style.display = 'none';
+window.setSerataAdmin   = setSerata;
+window.toggleVoto       = e => toggleVoto(e.target.checked);
+window.toggleTop5       = e => toggleTop5(e.target.checked);
+window.toggleSvela      = e => toggleSvela(e.target.checked);
+window.refreshRanking   = refreshRanking;
+window.exportCSV        = exportCSV;
+window.confirmReset     = () => document.getElementById('overlay-reset').style.display = 'flex';
+window.resetVotes       = resetVotes;
+window.saveSingersAdmin = saveSingers;
+window.signOutAdmin     = signOutUser;
+window.cancelReset      = () => document.getElementById('overlay-reset').style.display = 'none';
