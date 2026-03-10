@@ -5,6 +5,7 @@ import { auth, db, showScreen, showToast } from './firebase-init.js';
 import {
   GoogleAuthProvider,
   PhoneAuthProvider,
+  RecaptchaVerifier,
   signInWithPopup,
   signInWithPhoneNumber,
   signInWithCredential,
@@ -12,9 +13,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-const RECAPTCHA_SITE_KEY = '6LfnToUsAAAAAJZ_P6iO-8dzp1cF8g6pprriUKW8';
-
-let confirmResult  = null;
+let confirmResult = null;
 
 // ── Google Login ──────────────────────────────
 export async function signInWithGoogle() {
@@ -31,27 +30,26 @@ export function showPhoneAuth() {
   document.getElementById('phone-step-1').style.display = '';
   document.getElementById('phone-step-2').style.display = 'none';
   document.body.classList.add('show-recaptcha');
+  // Inizializza il verifier solo ora, quando il container è visibile nel DOM
+  initRecaptcha();
 }
 
-// Ottieni token reCAPTCHA Enterprise, con attesa se lo script non è ancora pronto
-function getRecaptchaToken() {
-  return new Promise((resolve, reject) => {
-    const run = () => {
-      if (typeof grecaptcha === 'undefined' || !grecaptcha.enterprise) {
-        setTimeout(run, 300);
-        return;
-      }
-      grecaptcha.enterprise.ready(async () => {
-        try {
-          const token = await grecaptcha.enterprise.execute(RECAPTCHA_SITE_KEY, { action: 'LOGIN' });
-          resolve(token);
-        } catch(e) {
-          reject(e);
-        }
-      });
-    };
-    run();
+function initRecaptcha() {
+  // Distruggi eventuale istanza precedente
+  if (window._rcv) {
+    try { window._rcv.clear(); } catch(e) {}
+    window._rcv = null;
+  }
+  window._rcv = new RecaptchaVerifier(auth, 'recaptcha-container', {
+    size: 'invisible',
+    callback: () => {},
+    'error-callback': () => {
+      showToast('reCAPTCHA non disponibile. Ricarica la pagina.');
+      window._rcv = null;
+    }
   });
+  // Pre-render per accelerare il primo invio
+  window._rcv.render().catch(() => {});
 }
 
 export async function sendSMS() {
@@ -63,29 +61,30 @@ export async function sendSMS() {
   const btn = document.getElementById('btn-send-sms');
   btn.disabled = true; btn.textContent = 'Invio…';
 
+  // Se il verifier è stato consumato o nullo, ricrealo
+  if (!window._rcv) initRecaptcha();
+
   try {
-    // Ottieni token reCAPTCHA Enterprise
-    await getRecaptchaToken();
-
-    // Firebase Phone Auth usa internamente reCAPTCHA Enterprise se
-    // è presente lo script Enterprise nel DOM — passa null come verifier
-    confirmResult = await signInWithPhoneNumber(auth, fullNumber, null);
-
+    confirmResult = await signInWithPhoneNumber(auth, fullNumber, window._rcv);
     document.getElementById('otp-sent-to').textContent = `Codice inviato al ${fullNumber}.`;
     document.getElementById('phone-step-1').style.display = 'none';
     document.getElementById('phone-step-2').style.display = '';
     setupOTPInputs();
     document.getElementById('otp-0').focus();
-
   } catch(e) {
     console.error('Phone auth error:', e.code, e.message);
-    let msg = 'Errore invio SMS. Riprova.';
-    if (e.code === 'auth/invalid-phone-number')  msg = 'Numero non valido. Usa il formato internazionale.';
-    if (e.code === 'auth/too-many-requests')      msg = 'Troppi tentativi. Riprova tra qualche minuto.';
-    if (e.code === 'auth/captcha-check-failed')   msg = 'Verifica reCAPTCHA fallita. Ricarica la pagina.';
-    if (e.code === 'auth/quota-exceeded')         msg = 'Quota SMS esaurita per oggi.';
-    showToast(msg + ' [' + (e.code||e.message) + ']');
+    let msg = 'Errore: ';
+    if (e.code === 'auth/invalid-phone-number')  msg += 'numero non valido. Usa formato +39XXXXXXXXXX';
+    else if (e.code === 'auth/too-many-requests') msg += 'troppi tentativi, riprova tra poco';
+    else if (e.code === 'auth/captcha-check-failed') msg += 'reCAPTCHA fallito, ricarica la pagina';
+    else if (e.code === 'auth/quota-exceeded')    msg += 'quota SMS esaurita';
+    else if (e.code === 'auth/billing-not-enabled') msg += 'piano Blaze non attivo su Firebase';
+    else msg += (e.code || e.message);
+    showToast(msg);
     btn.disabled = false; btn.textContent = 'Invia SMS';
+    // Ricrea il verifier — dopo un errore è consumato
+    try { window._rcv?.clear(); } catch(_) {}
+    window._rcv = null;
   }
 }
 
@@ -106,7 +105,8 @@ function setupOTPInputs() {
 }
 
 function getOTPCode() {
-  return Array.from({length:6}, (_,i) => document.getElementById(`otp-${i}`).value).join('');
+  return Array.from({length:6}, (_,i) =>
+    document.getElementById(`otp-${i}`).value).join('');
 }
 
 export async function verifyOTP() {
@@ -117,7 +117,6 @@ export async function verifyOTP() {
   try {
     const cred = PhoneAuthProvider.credential(confirmResult.verificationId, code);
     await signInWithCredential(auth, cred);
-    // onAuthStateChanged in vote.js gestirà il redirect
   } catch(e) {
     showToast('Codice non corretto. Riprova.');
     btn.disabled = false; btn.textContent = 'Verifica e accedi';
