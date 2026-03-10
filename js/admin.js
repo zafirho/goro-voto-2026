@@ -252,6 +252,19 @@ async function refreshRanking() {
 // ══════════════════════════════════════════════
 //  CLASSIFICA FINALE Z-SCORE
 // ══════════════════════════════════════════════
+// Restituisce { nomeCantante: posizione } basata sui punteggi grezzi (1 = primo)
+function getRankPositions(votes, singerList) {
+  const raw = {};
+  singerList.forEach(s => raw[s] = 0);
+  votes.forEach(({vote}) =>
+    vote?.forEach((name,i) => { if (raw[name] !== undefined) raw[name] += POINTS[i]; })
+  );
+  const sorted = Object.entries(raw).sort((a,b) => b[1]-a[1]);
+  const pos = {};
+  sorted.forEach(([name], i) => pos[name] = i + 1);
+  return pos;
+}
+
 function calcZScores(votes, singerList) {
   // Punteggi grezzi
   const raw = {};
@@ -267,7 +280,7 @@ function calcZScores(votes, singerList) {
   return zMap;
 }
 
-// Mostra classifica già salvata — non ricalcola
+// ── Mostra classifica salvata — non ricalcola ──
 async function showFinalRanking() {
   openOverlay('overlay-final');
   const rows = document.getElementById('admin-final-rows');
@@ -275,17 +288,17 @@ async function showFinalRanking() {
   rows.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted)">Caricamento…</div>';
   try {
     const saved = await getDoc(doc(db,'config','finalRanking'));
-    if (saved.exists()) {
-      renderFinalRows(rows, saved.data().ranking, false);
-      return;
+    if (saved.exists() && saved.data().ranking?.length > 0) {
+      renderFinalRows(rows, saved.data().ranking);
+    } else {
+      rows.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted)">Nessuna classifica salvata.<br><br>Chiudi e usa <b style=\'color:var(--gold)\'>Calcola classifica</b> per generarla.</div>';
     }
-    rows.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted)">Nessuna classifica salvata.<br>Usa \'Calcola classifica\' per generarla.</div>';
   } catch(e) {
-    rows.innerHTML = '<div style="padding:20px;text-align:center;color:var(--red)">Errore caricamento.</div>';
+    rows.innerHTML = '<div style="padding:20px;text-align:center;color:var(--red)">Errore: ' + e.message + '</div>';
   }
 }
 
-// Ricalcola da zero e salva
+// ── Ricalcola da zero, salva, mostra ──
 async function computeAndShowFinalRanking() {
   openOverlay('overlay-final');
   const rows = document.getElementById('admin-final-rows');
@@ -307,12 +320,25 @@ async function computeAndShowFinalRanking() {
     const z2 = calcZScores(v2, singers[2]);
     const z3 = calcZScores(v3, [...singers[1], ...singers[2]]);
 
-    // Combina: ogni cantante ha z dalla propria serata + z dalla finale
+    // Calcola posizioni per punteggio grezzo in ogni serata
+    const pos1 = getRankPositions(v1, singers[1]);
+    const pos2 = getRankPositions(v2, singers[2]);
+    const pos3 = getRankPositions(v3, [...singers[1], ...singers[2]]);
+
+    // Combina Z-score e posizioni
     const allSingers = [...singers[1], ...singers[2]];
     const combined = allSingers.map(name => {
-      const zSerata = singers[1].includes(name) ? (z1[name]||0) : (z2[name]||0);
+      const inS1    = singers[1].includes(name);
+      const zSerata = inS1 ? (z1[name]||0) : (z2[name]||0);
       const zFinale = z3[name] || 0;
-      return { name, zSerata, zFinale, zTot: zSerata + zFinale };
+      return {
+        name,
+        zSerata,
+        zFinale,
+        zTot:      zSerata + zFinale,
+        posSerata: inS1 ? pos1[name] : pos2[name],
+        posFinale: pos3[name]
+      };
     }).sort((a,b) => b.zTot - a.zTot);
 
     rows.innerHTML = '';
@@ -332,12 +358,21 @@ async function computeAndShowFinalRanking() {
       rows.appendChild(r);
     });
 
-    // Salva su Firestore
-    const rankingData = combined.map(c => ({ name: c.name, zTot: c.zTot }));
+    // Costruisci dati completi con posizioni serata
+    const rankingData = combined.map(c => ({
+      name:    c.name,
+      zTot:    c.zTot,
+      posSerata:  c.posSerata,   // posizione in serata 1 o 2 (tra 7)
+      posFinale:  c.posFinale,   // posizione in serata 3 (tra 14)
+      serataNum:  singers[1].includes(c.name) ? 1 : 2
+    }));
+
+    // Forza sovrascrittura su Firestore con merge:false (default setDoc)
     await setDoc(doc(db,'config','finalRanking'), {
-      ranking: rankingData,
-      computedAt: serverTimestamp()
+      ranking:     rankingData,
+      computedAt:  serverTimestamp()
     });
+
     renderFinalRows(rows, rankingData);
 
   } catch(e) {
@@ -345,19 +380,22 @@ async function computeAndShowFinalRanking() {
   }
 }
 
-function renderFinalRows(rows, ranking, showRecalc = true) {
+function renderFinalRows(rows, ranking) {
   rows.innerHTML = '';
   ranking.forEach((c,i) => {
+    const serataLabel = c.serataNum ? `S${c.serataNum}: ${c.posSerata}°` : (c.posSerata ? `Ser.: ${c.posSerata}°` : '');
+    const finaleLabel = c.posFinale ? `Fin.: ${c.posFinale}°` : '';
+    const subLine     = [serataLabel, finaleLabel].filter(Boolean).join(' &nbsp;|&nbsp; ');
     const r = document.createElement('div');
     r.className = 'ranking-row';
-    r.style.gridTemplateColumns = '40px 1fr 90px';
+    r.style.gridTemplateColumns = '40px 1fr 72px';
     r.innerHTML = `
       <span class="r-pos">${i+1}</span>
       <div style="min-width:0">
         <div class="r-name">${c.name}</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:2px">Z-score: ${Number(c.zTot).toFixed(3)}</div>
+        ${subLine ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${subLine}</div>` : ''}
       </div>
-      <span class="r-pts" style="font-size:13px">${i+1}°</span>`;
+      <span class="r-pts" style="font-size:12px;color:var(--muted)">${Number(c.zTot).toFixed(2)}</span>`;
     rows.appendChild(r);
   });
 }

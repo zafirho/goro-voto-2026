@@ -118,7 +118,7 @@ async function renderReveal() {
         ranking.map((c,i) => `
           <div class="summary-row">
             <span class="s-rank" style="font-size:20px">${labels[i]||''}</span>
-            <span class="s-name">${c.name}</span>
+            <span class="s-name">${c.name || c}</span>
           </div>`).join('');
       return;
     }
