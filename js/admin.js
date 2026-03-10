@@ -22,9 +22,21 @@ export async function initAdminApp() {
   onAuthStateChanged(auth, async user => {
     if (!user) { showScreen('screen-admin-login'); return; }
 
-    if (!(await isAdmin(user.uid))) {
-      showToast('Accesso non autorizzato');
-      setTimeout(() => window.location.href = 'index.html', 1500);
+    // Debug temporaneo — rimuovere dopo fix
+    let adminResult = false;
+    try {
+      const snap = await getDoc(doc(db, 'admins', user.uid));
+      adminResult = snap.exists();
+      console.log('isAdmin check — uid:', user.uid, '| doc exists:', snap.exists(), '| data:', snap.data());
+    } catch(e) {
+      console.error('isAdmin ERROR:', e.code, e.message);
+      showToast('Errore Firestore: ' + e.code);
+      return;
+    }
+
+    if (!adminResult) {
+      showToast('Non autorizzato — uid: ' + user.uid.slice(0,8) + '…');
+      setTimeout(() => window.location.href = 'index.html', 3000);
       return;
     }
 
