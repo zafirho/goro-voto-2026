@@ -35,11 +35,15 @@ export function showPhoneAuth() {
 }
 
 function initRecaptcha() {
-  // Distruggi eventuale istanza precedente
+  // Pulisci container e istanza precedente
   if (window._rcv) {
     try { window._rcv.clear(); } catch(e) {}
     window._rcv = null;
   }
+  // Svuota il container per evitare "already rendered"
+  const container = document.getElementById('recaptcha-container');
+  if (container) container.innerHTML = '';
+
   window._rcv = new RecaptchaVerifier(auth, 'recaptcha-container', {
     size: 'invisible',
     callback: () => {},
@@ -48,8 +52,6 @@ function initRecaptcha() {
       window._rcv = null;
     }
   });
-  // Pre-render per accelerare il primo invio
-  window._rcv.render().catch(() => {});
 }
 
 export async function sendSMS() {
@@ -61,10 +63,9 @@ export async function sendSMS() {
   const btn = document.getElementById('btn-send-sms');
   btn.disabled = true; btn.textContent = 'Invio…';
 
-  // Se il verifier è stato consumato o nullo, ricrealo
-  if (!window._rcv) initRecaptcha();
-
   try {
+    // Render esplicito — necessario prima di ogni tentativo
+    await window._rcv.render();
     confirmResult = await signInWithPhoneNumber(auth, fullNumber, window._rcv);
     document.getElementById('otp-sent-to').textContent = `Codice inviato al ${fullNumber}.`;
     document.getElementById('phone-step-1').style.display = 'none';
@@ -78,9 +79,9 @@ export async function sendSMS() {
     else if (e.code === 'auth/too-many-requests') msg += 'troppi tentativi, riprova tra poco';
     else if (e.code === 'auth/captcha-check-failed') msg += 'reCAPTCHA fallito, ricarica la pagina';
     else if (e.code === 'auth/quota-exceeded')    msg += 'quota SMS esaurita';
-    else if (e.code === 'auth/billing-not-enabled') msg += 'piano Blaze non attivo su Firebase';
+    else if (e.code === 'auth/billing-not-enabled') msg += 'attiva il piano Blaze su Firebase Console per usare gli SMS';
     else msg += (e.code || e.message);
-    showToast(msg);
+    showToast(msg, 5000);
     btn.disabled = false; btn.textContent = 'Invia SMS';
     // Ricrea il verifier — dopo un errore è consumato
     try { window._rcv?.clear(); } catch(_) {}
