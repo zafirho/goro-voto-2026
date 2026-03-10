@@ -92,6 +92,7 @@ async function showClosedScreen() {
       .map(([name]) => name)
       .sort(() => Math.random() - 0.5);
 
+    document.getElementById('closed-random-note').style.display = 'block';
     el.innerHTML = `
       <div class="top5-section">
         <div class="top5-label">I più apprezzati stasera</div>
@@ -331,7 +332,28 @@ export function renderSummaryTable(id, vote) {
       </div>`).join('');
 }
 
+// ══════════════════════════════════════════════
+//  OVERLAY CONFERMA VOTO
+// ══════════════════════════════════════════════
+function showConfirmOverlay() {
+  const medals  = ['🥇','🥈','🥉','4°','5°'];
+  const preview = document.getElementById('confirm-vote-preview');
+  preview.innerHTML = selections.map((idx,i) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06)">
+      <span style="font-size:20px;width:32px;text-align:center">${medals[i]}</span>
+      <span style="font-size:14px;font-weight:500">${singers[idx]}</span>
+    </div>`).join('');
+  document.getElementById('overlay-confirm-vote').style.display = 'flex';
+}
+
+function closeConfirmOverlay() {
+  document.getElementById('overlay-confirm-vote').style.display = 'none';
+}
+
 // ── Expose ────────────────────────────────────
-window.toggleSinger   = toggleSinger;
+window.showConfirmOverlay  = showConfirmOverlay;
+window.closeConfirmOverlay = closeConfirmOverlay;
+window.confirmAndSend      = () => { closeConfirmOverlay(); submitVote(); };
+window.toggleSinger        = toggleSinger;
 window.removeFromSlot = removeFromSlot;
 window.submitVote     = submitVote;
