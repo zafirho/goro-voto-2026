@@ -383,19 +383,18 @@ async function computeAndShowFinalRanking() {
 function renderFinalRows(rows, ranking) {
   rows.innerHTML = '';
   ranking.forEach((c,i) => {
-    const serataLabel = c.serataNum ? `S${c.serataNum}: ${c.posSerata}°` : (c.posSerata ? `Ser.: ${c.posSerata}°` : '');
-    const finaleLabel = c.posFinale ? `Fin.: ${c.posFinale}°` : '';
-    const subLine     = [serataLabel, finaleLabel].filter(Boolean).join(' &nbsp;|&nbsp; ');
+    const serataLabel = c.serataNum ? `Ser.${c.serataNum}: ${c.posSerata}°` : '';
+    const finaleLabel = c.posFinale  ? `Finale: ${c.posFinale}°`            : '';
+    const subLine     = [serataLabel, finaleLabel].filter(Boolean).join('  |  ');
     const r = document.createElement('div');
-    r.className = 'ranking-row';
-    r.style.gridTemplateColumns = '40px 1fr 72px';
+    r.className = 'ranking-row-final';
     r.innerHTML = `
       <span class="r-pos">${i+1}</span>
       <div style="min-width:0">
         <div class="r-name">${c.name}</div>
-        ${subLine ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${subLine}</div>` : ''}
+        ${subLine ? `<div class="r-subline">${subLine}</div>` : ''}
       </div>
-      <span class="r-pts" style="font-size:12px;color:var(--muted)">${Number(c.zTot).toFixed(2)}</span>`;
+      <span class="r-zscore">${Number(c.zTot).toFixed(2)}</span>`;
     rows.appendChild(r);
   });
 }
