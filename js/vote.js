@@ -69,6 +69,12 @@ async function evaluateState(user) {
 //  SCHERMATA CHIUSA
 // ══════════════════════════════════════════════
 async function showClosedScreen() {
+  // Reset nota casuale — nascosta di default, mostrata solo se top5 attivo
+  const randomNote = document.getElementById('closed-random-note');
+  if (randomNote) randomNote.style.display = 'none';
+  const dynEl = document.getElementById('closed-dynamic');
+  if (dynEl) dynEl.innerHTML = '';
+
   // Classifica svelata?
   if (appConfig.svelaClassifica && currentSerata === 3) {
     await renderReveal();
