@@ -253,31 +253,40 @@ async function refreshRanking() {
 //  CLASSIFICA FINALE Z-SCORE
 // ══════════════════════════════════════════════
 // Restituisce { nomeCantante: posizione } basata sui punteggi grezzi (1 = primo)
-function getRankPositions(votes, singerList) {
+// ── Helpers statistici ───────────────────────
+function getRawScores(votes, singerList) {
   const raw = {};
   singerList.forEach(s => raw[s] = 0);
   votes.forEach(({vote}) =>
     vote?.forEach((name,i) => { if (raw[name] !== undefined) raw[name] += POINTS[i]; })
   );
+  return raw;
+}
+
+function getRankPositions(raw) {
   const sorted = Object.entries(raw).sort((a,b) => b[1]-a[1]);
   const pos = {};
   sorted.forEach(([name], i) => pos[name] = i + 1);
   return pos;
 }
 
-function calcZScores(votes, singerList) {
-  // Punteggi grezzi
-  const raw = {};
-  singerList.forEach(s => raw[s] = 0);
-  votes.forEach(({vote}) =>
-    vote?.forEach((name,i) => { if (raw[name] !== undefined) raw[name] += POINTS[i]; })
-  );
-  const vals  = Object.values(raw);
-  const mean  = vals.reduce((a,b) => a+b, 0) / vals.length;
-  const std   = Math.sqrt(vals.reduce((a,b) => a + (b-mean)**2, 0) / vals.length);
-  const zMap  = {};
-  singerList.forEach(s => zMap[s] = std > 0 ? (raw[s] - mean) / std : 0);
+function calcZScores(raw) {
+  const vals = Object.values(raw);
+  const mean = vals.reduce((a,b) => a+b, 0) / vals.length;
+  const std  = Math.sqrt(vals.reduce((a,b) => a + (b-mean)**2, 0) / vals.length);
+  const zMap = {};
+  Object.keys(raw).forEach(s => zMap[s] = std > 0 ? (raw[s] - mean) / std : 0);
   return zMap;
+}
+
+// Clip Z-score a ±2.0 per limitare outlier
+const Z_CLIP = 2.0;
+function clip(z) { return Math.max(-Z_CLIP, Math.min(Z_CLIP, z)); }
+
+// Peso per affidabilità statistica: √(n_votanti / n_max)
+// Stima votanti da punteggio totale grezzo (max 5pt per votante)
+function estVoters(raw) {
+  return Object.values(raw).reduce((a,b) => a+b, 0) / 5;
 }
 
 // ── Mostra classifica salvata — non ricalcola ──
@@ -316,28 +325,45 @@ async function computeAndShowFinalRanking() {
     snap2.forEach(d=>v2.push(d.data()));
     snap3.forEach(d=>v3.push(d.data()));
 
-    const z1 = calcZScores(v1, singers[1]);
-    const z2 = calcZScores(v2, singers[2]);
-    const z3 = calcZScores(v3, [...singers[1], ...singers[2]]);
+    // Punteggi grezzi
+    const raw1 = getRawScores(v1, singers[1]);
+    const raw2 = getRawScores(v2, singers[2]);
+    const raw3 = getRawScores(v3, [...singers[1], ...singers[2]]);
 
-    // Calcola posizioni per punteggio grezzo in ogni serata
-    const pos1 = getRankPositions(v1, singers[1]);
-    const pos2 = getRankPositions(v2, singers[2]);
-    const pos3 = getRankPositions(v3, [...singers[1], ...singers[2]]);
+    // Z-score per serata
+    const z1 = calcZScores(raw1);
+    const z2 = calcZScores(raw2);
+    const z3 = calcZScores(raw3);
 
-    // Combina Z-score e posizioni
+    // Posizioni per punteggio grezzo
+    const pos1 = getRankPositions(raw1);
+    const pos2 = getRankPositions(raw2);
+    const pos3 = getRankPositions(raw3);
+
+    // Pesi affidabilità: √(n_votanti / n_max)
+    const n1 = estVoters(raw1);
+    const n2 = estVoters(raw2);
+    const n3 = estVoters(raw3);
+    const nMax = Math.max(n1, n2, n3);
+    const w1 = Math.sqrt(n1 / nMax);
+    const w2 = Math.sqrt(n2 / nMax);
+    const w3 = Math.sqrt(n3 / nMax);
+
+    // Combina: clip + peso per ogni serata
     const allSingers = [...singers[1], ...singers[2]];
     const combined = allSingers.map(name => {
       const inS1    = singers[1].includes(name);
-      const zSerata = inS1 ? (z1[name]||0) : (z2[name]||0);
-      const zFinale = z3[name] || 0;
+      const zs1     = inS1 ? clip(z1[name]||0) * w1 : null;
+      const zs2     = !inS1 ? clip(z2[name]||0) * w2 : null;
+      const zs3     = clip(z3[name]||0) * w3;
+      const zTot    = (zs1 ?? 0) + (zs2 ?? 0) + zs3;
       return {
         name,
-        zSerata,
-        zFinale,
-        zTot:      zSerata + zFinale,
+        zTot,
+        zs1, zs2, zs3,
         posSerata: inS1 ? pos1[name] : pos2[name],
-        posFinale: pos3[name]
+        posFinale: pos3[name],
+        serataNum: inS1 ? 1 : 2
       };
     }).sort((a,b) => b.zTot - a.zTot);
 
