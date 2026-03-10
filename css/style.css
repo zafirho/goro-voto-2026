@@ -262,3 +262,26 @@ html, body { min-height: 100%; background: var(--deep); color: var(--text); font
 /* ── ANIMATIONS ── */
 @keyframes fadeDown { from{opacity:0;transform:translateY(-14px)} to{opacity:1;transform:translateY(0)} }
 @keyframes fadeUp   { from{opacity:0;transform:translateY( 14px)} to{opacity:1;transform:translateY(0)} }
+
+/* ══════════════════════════════════════════════
+   SLOT AGGIORNATI — medaglie emoji
+   ══════════════════════════════════════════════ */
+.slot { display:grid; grid-template-columns:44px 1fr 52px; }
+
+.slot-medal {
+  font-size: 26px;
+  line-height: 1;
+  text-align: center;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,.4));
+}
+
+/* Slot vuoti: medaglia più opaca */
+.slot:not(.filled) .slot-medal { opacity: .35; }
+
+/* Slot filled: medaglia vivida con leggero glow */
+.slot-medal-1.filled .slot-medal { filter: drop-shadow(0 0 8px rgba(255,215,0,.6)); }
+.slot-medal-2.filled .slot-medal { filter: drop-shadow(0 0 8px rgba(192,192,192,.5)); }
+.slot-medal-3.filled .slot-medal { filter: drop-shadow(0 0 8px rgba(205,127,50,.5)); }
+
+/* Rimuovi vecchi stili slot-rank se presenti */
+.slot-rank { display: none; }
