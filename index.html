@@ -87,6 +87,11 @@
   <h2 class="closed-title">Votazioni <span>chiuse</span></h2>
   <p class="closed-sub">Le votazioni per questa serata sono terminate. Grazie per la partecipazione!</p>
   <div id="closed-dynamic"></div>
+  <div id="closed-random-note" style="display:none;margin-top:16px;font-size:12px;color:var(--muted);text-align:center;max-width:280px;line-height:1.6">
+    I preferiti sono mostrati in <strong style="color:var(--gold)">ordine casuale</strong> — non riflettono la classifica reale.<br>
+    Non includono le votazioni della giuria tecnica.<br>
+    <span style="opacity:.7">🔄 Ricarica la pagina per vedere un ordine diverso</span>
+  </div>
 </div>
 
 <!-- ══ CLASSIFICA SVELATA ════════════════════════ -->
@@ -137,7 +142,10 @@
 
   <!-- 1. Cantanti da selezionare (IN CIMA) -->
   <div class="singers-section">
-    <div class="section-title">Tocca i cantanti per sceglierli • tocca di nuovo per rimuoverli</div>
+    <div class="section-title">Tocca i cantanti in ordine di preferenza, dal più al meno amato</div>
+    <div style="font-size:12px;color:var(--muted);padding:0 4px 12px;line-height:1.5;text-align:center">
+      Puoi correggere le scelte toccando di nuovo un nome selezionato oppure usando la <strong>✕</strong> nella classifica in basso
+    </div>
     <div class="singers-grid" id="singers-grid"></div>
   </div>
 
@@ -154,6 +162,23 @@
         Conferma il voto 🎤
       </button>
     </div>
+  </div>
+</div>
+
+<!-- ══ OVERLAY CONFERMA VOTO ═════════════════════ -->
+<div class="overlay" id="overlay-confirm-vote" style="display:none">
+  <div class="overlay-box">
+    <div style="font-size:36px;margin-bottom:12px">🎤</div>
+    <h3>Confermi il tuo voto?</h3>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:4px">Stai per inviare questa classifica:</p>
+    <div id="confirm-vote-preview" style="margin:12px 0 16px;width:100%"></div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.5">
+      Puoi ancora tornare indietro e modificare le tue scelte prima di confermare.
+    </p>
+    <button class="btn-overlay-ok" id="btn-confirm-send" onclick="confirmAndSend()">
+      ✓ Sì, invia il mio voto
+    </button>
+    <button class="btn-overlay-cancel" onclick="closeConfirmOverlay()">← Modifica le scelte</button>
   </div>
 </div>
 
