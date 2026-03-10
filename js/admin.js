@@ -367,23 +367,6 @@ async function computeAndShowFinalRanking() {
       };
     }).sort((a,b) => b.zTot - a.zTot);
 
-    rows.innerHTML = '';
-    combined.forEach((c,i) => {
-      const r = document.createElement('div');
-      r.className = 'ranking-row';
-      r.style.gridTemplateColumns = '40px 1fr 90px';
-      r.innerHTML = `
-        <span class="r-pos">${i+1}</span>
-        <div style="min-width:0">
-          <div class="r-name">${c.name}</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px">
-            Serata: ${c.zSerata.toFixed(3)} &nbsp;|&nbsp; Finale: ${c.zFinale.toFixed(3)}
-          </div>
-        </div>
-        <span class="r-pts" style="font-size:13px">${c.zTot.toFixed(3)}</span>`;
-      rows.appendChild(r);
-    });
-
     // Costruisci dati completi con posizioni serata
     const rankingData = combined.map(c => ({
       name:    c.name,
