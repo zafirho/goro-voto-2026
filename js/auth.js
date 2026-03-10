@@ -64,8 +64,9 @@ export async function sendSMS() {
   btn.disabled = true; btn.textContent = 'Invio…';
 
   try {
+    if (!window._rcv) initRecaptcha();
     // Render esplicito — necessario prima di ogni tentativo
-    await window._rcv.render();
+    await window._rcv.render().catch(() => {});
     confirmResult = await signInWithPhoneNumber(auth, fullNumber, window._rcv);
     document.getElementById('otp-sent-to').textContent = `Codice inviato al ${fullNumber}.`;
     document.getElementById('phone-step-1').style.display = 'none';
@@ -84,8 +85,7 @@ export async function sendSMS() {
     showToast(msg, 5000);
     btn.disabled = false; btn.textContent = 'Invia SMS';
     // Ricrea il verifier — dopo un errore è consumato
-    try { window._rcv?.clear(); } catch(_) {}
-    window._rcv = null;
+    initRecaptcha();
   }
 }
 
