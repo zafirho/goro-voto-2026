@@ -127,9 +127,14 @@
       <div style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.5">
         Calcola la classifica usando la normalizzazione Z-score sulle tre serate. Disponibile solo a votazioni chiuse.
       </div>
-      <button class="btn-secondary btn-reveal" onclick="computeAndShowFinalRanking()" style="width:100%;border-radius:100px">
-        🏆 Calcola classifica finale del pubblico
-      </button>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn-secondary btn-reveal" onclick="computeAndShowFinalRanking()" style="border-radius:100px">
+          ⚙️ Calcola classifica (ricalcola da zero)
+        </button>
+        <button class="btn-secondary" onclick="showFinalRanking()" style="border-radius:100px">
+          👁 Mostra classifica salvata
+        </button>
+      </div>
     </div>
   </div>
 
@@ -179,8 +184,11 @@
 <div class="overlay" id="overlay-final" style="display:none">
   <div class="overlay-box" style="max-height:90vh;overflow-y:auto;max-width:420px">
     <h3 style="color:var(--gold)">🏆 Classifica finale</h3>
-    <p style="font-size:12px;color:var(--muted);margin-bottom:4px">
-      VOTAZIONI DEL PUBBLICO — punteggi normalizzati Z-score tra le tre serate
+    <p style="font-size:11px;color:var(--muted);margin-bottom:2px;text-transform:uppercase;letter-spacing:1px">
+      Votazioni del pubblico
+    </p>
+    <p style="font-size:11px;color:var(--muted);margin-bottom:12px;opacity:.7">
+      Punteggi normalizzati Z-score — non include la giuria tecnica
     </p>
     <div class="ranking-card" style="margin-bottom:16px">
       <div class="ranking-head" style="grid-template-columns:40px 1fr 90px">
