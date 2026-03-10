@@ -48,7 +48,7 @@ html, body { min-height: 100%; background: var(--deep); color: var(--text); font
 
 .hero-badge { display:inline-block; background:rgba(201,168,76,.12); border:1px solid rgba(201,168,76,.3); color:var(--gold); font-size:11px; font-weight:500; letter-spacing:2px; text-transform:uppercase; padding:6px 16px; border-radius:100px; margin-bottom:20px; animation:fadeDown .6s ease both; }
 
-.hero-image { width:100%; max-width:320px; border-radius:var(--r); margin-bottom:24px; box-shadow:0 12px 48px rgba(0,0,0,.5); animation:fadeDown .65s .05s ease both; object-fit:cover; }
+
 .hero-image-placeholder { width:100%; max-width:320px; height:160px; background:var(--surf2); border:2px dashed rgba(201,168,76,.2); border-radius:var(--r); margin-bottom:24px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; color:var(--muted); font-size:13px; animation:fadeDown .65s .05s ease both; }
 
 .hero h1 { font-family:'Playfair Display',serif; font-size:clamp(34px,9vw,58px); font-weight:900; line-height:1.05; letter-spacing:-1px; animation:fadeDown .7s .1s ease both; }
@@ -326,15 +326,7 @@ html, body { min-height: 100%; background: var(--deep); color: var(--text); font
 .grecaptcha-badge { visibility: hidden !important; }
 body.show-recaptcha .grecaptcha-badge { visibility: hidden !important; }
 
-/* ── Locandina hero ── */
-.hero-image {
-  width: min(340px, 88vw);
-  height: auto;
-  object-fit: contain;
-  margin-bottom: -8px;  /* avvicina al testo sotto */
-  filter: drop-shadow(0 8px 32px rgba(0,0,0,.5));
-  animation: fadeDown .6s ease both;
-}
+
 
 /* ── Copyright bar ── */
 .copyright-bar {
@@ -352,24 +344,25 @@ body.show-recaptcha .grecaptcha-badge { visibility: hidden !important; }
   font-family: 'DM Sans', sans-serif;
 }
 
-/* ── Hero image — senza margini eccessivi ── */
-.hero { padding-top: 0 !important; justify-content: center; gap: 10px; }
+
+
+/* ── Hero layout e locandina ── */
+.hero { padding-top: 12px; gap: 8px; }
 
 .hero-image {
-  width: min(380px, 92vw);
-  height: auto;
+  width: min(320px, 85vw);
+  max-height: 42vh;
   object-fit: contain;
-  margin-top: -12px;
-  margin-bottom: -16px;
-  filter: drop-shadow(0 4px 24px rgba(0,0,0,.4));
+  margin-bottom: -4px;
+  filter: drop-shadow(0 4px 20px rgba(0,0,0,.35));
   animation: fadeDown .6s ease both;
 }
 
-.hero-event-date {
-  font-size: 12px;
-  color: var(--muted);
-  letter-spacing: 1px;
+.hero-badge {
+  font-size: 11px;
+  letter-spacing: 1.5px;
   text-transform: uppercase;
-  opacity: .8;
-  margin-top: -4px;
+  color: var(--muted);
+  opacity: .75;
+  margin-bottom: -2px;
 }
