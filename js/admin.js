@@ -267,24 +267,27 @@ function calcZScores(votes, singerList) {
   return zMap;
 }
 
+// Mostra classifica già salvata — non ricalcola
 async function showFinalRanking() {
   openOverlay('overlay-final');
   const rows = document.getElementById('admin-final-rows');
   if (!rows) return;
   rows.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted)">Caricamento…</div>';
-  // Prima prova a caricare da Firestore
   try {
     const saved = await getDoc(doc(db,'config','finalRanking'));
     if (saved.exists()) {
-      renderFinalRows(rows, saved.data().ranking);
+      renderFinalRows(rows, saved.data().ranking, false);
       return;
     }
-  } catch(e) {}
-  // Non trovata — calcola
-  await computeAndShowFinalRanking();
+    rows.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted)">Nessuna classifica salvata.<br>Usa \'Calcola classifica\' per generarla.</div>';
+  } catch(e) {
+    rows.innerHTML = '<div style="padding:20px;text-align:center;color:var(--red)">Errore caricamento.</div>';
+  }
 }
 
+// Ricalcola da zero e salva
 async function computeAndShowFinalRanking() {
+  openOverlay('overlay-final');
   const rows = document.getElementById('admin-final-rows');
   if (!rows) return;
   rows.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted)">Calcolo in corso…</div>';
@@ -342,7 +345,7 @@ async function computeAndShowFinalRanking() {
   }
 }
 
-function renderFinalRows(rows, ranking) {
+function renderFinalRows(rows, ranking, showRecalc = true) {
   rows.innerHTML = '';
   ranking.forEach((c,i) => {
     const r = document.createElement('div');
@@ -352,15 +355,11 @@ function renderFinalRows(rows, ranking) {
       <span class="r-pos">${i+1}</span>
       <div style="min-width:0">
         <div class="r-name">${c.name}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">Z-score: ${Number(c.zTot).toFixed(3)}</div>
       </div>
-      <span class="r-pts" style="font-size:13px">${Number(c.zTot).toFixed(3)}</span>`;
+      <span class="r-pts" style="font-size:13px">${i+1}°</span>`;
     rows.appendChild(r);
   });
-  // Aggiungi pulsante ricalcola in fondo
-  const btn = document.createElement('div');
-  btn.style = 'padding:12px 16px;border-top:1px solid rgba(255,255,255,.06)';
-  btn.innerHTML = '<button onclick="computeAndShowFinalRanking()" style="background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;font-family:DM Sans,sans-serif">↻ Ricalcola</button>';
-  rows.appendChild(btn);
 }
 
 // ══════════════════════════════════════════════
@@ -422,8 +421,8 @@ window.toggleVoto             = e => toggleVoto(e.target.checked);
 window.toggleTop5             = e => toggleTop5(e.target.checked);
 window.toggleSvela            = e => toggleSvela(e.target.checked);
 window.refreshRanking         = refreshRanking;
-window.computeAndShowFinalRanking = showFinalRanking;
-window.recomputeFinalRanking = computeAndShowFinalRanking;
+window.showFinalRanking           = showFinalRanking;
+window.computeAndShowFinalRanking = computeAndShowFinalRanking;
 window.exportCSV              = exportCSV;
 window.confirmReset           = () => openOverlay('overlay-reset');
 window.resetVotes             = resetVotes;
