@@ -6,7 +6,7 @@ import {
   DEFAULT_SINGERS, POINTS, SERATA_LABELS
 } from './firebase-init.js';
 import { signOutUser } from './auth.js';
-import { onAuthStateChanged }   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { onAuthStateChanged }  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {
   doc, getDoc, setDoc, getDocs,
   collection, deleteDoc, serverTimestamp
@@ -17,38 +17,31 @@ let currentSerata = 1;
 let appConfig     = {};
 let singers       = { 1: [...DEFAULT_SINGERS[1]], 2: [...DEFAULT_SINGERS[2]] };
 
-// ── Entry point ───────────────────────────────
+// ══════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════
 export async function initAdminApp() {
   onAuthStateChanged(auth, async user => {
     if (!user) { showScreen('screen-admin-login'); return; }
 
-    // ── Controllo admin con debug visibile a schermo ──
     let adminResult = false;
     let debugInfo   = '';
     try {
       const snap  = await getDoc(doc(db, 'admins', user.uid));
       adminResult = snap.exists();
-      debugInfo   = 'uid: '    + user.uid
-                  + '\nexists: ' + snap.exists()
-                  + '\ndata: '   + JSON.stringify(snap.data());
+      debugInfo   = 'uid: ' + user.uid + '\nexists: ' + snap.exists();
     } catch(e) {
-      debugInfo = 'ERRORE FIRESTORE\ncode: ' + e.code
-                + '\nmessage: ' + e.message
-                + '\nuid usato: ' + user.uid;
+      debugInfo = 'ERRORE: ' + e.code + '\n' + e.message + '\nuid: ' + user.uid;
     }
 
     if (!adminResult) {
-      // Mostra debug fisso — nessun redirect automatico
       document.body.innerHTML =
         '<div style="font-family:monospace;background:#0D0D18;color:#F0EDE6;min-height:100vh;'
       + 'display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px">'
       + '<div style="color:#E85D5D;font-size:20px;margin-bottom:20px">DEBUG — accesso negato</div>'
       + '<pre style="background:#1E1E35;border:1px solid #C9A84C;border-radius:12px;padding:20px;'
       + 'font-size:14px;white-space:pre-wrap;word-break:break-all;max-width:440px;width:100%">'
-      + debugInfo
-      + '</pre>'
-      + '<p style="color:#8A8799;font-size:13px;margin-top:16px;max-width:440px;text-align:center">'
-      + 'Nessun redirect. Copia il testo sopra e mandamelo.</p>'
+      + debugInfo + '</pre>'
       + '<button onclick="window.location.href=\'index.html\'" '
       + 'style="margin-top:20px;background:#1E1E35;color:#F0EDE6;border:1px solid rgba(255,255,255,.2);'
       + 'border-radius:100px;padding:12px 24px;cursor:pointer;font-size:14px">← Torna al sito</button>'
@@ -56,14 +49,15 @@ export async function initAdminApp() {
       return;
     }
 
-    // Accesso OK — carica tutto e mostra pannello
     await Promise.all([loadConfig(), loadAllSingers()]);
     renderAdminPanel(user);
     showScreen('screen-admin');
   });
 }
 
-// ── Carica config da Firestore ────────────────
+// ══════════════════════════════════════════════
+//  CONFIG
+// ══════════════════════════════════════════════
 async function loadConfig() {
   try {
     const snap = await getDoc(doc(db,'config','current'));
@@ -77,7 +71,9 @@ async function saveConfig(updates) {
   await setDoc(doc(db,'config','current'), appConfig);
 }
 
-// ── Cantanti ──────────────────────────────────
+// ══════════════════════════════════════════════
+//  CANTANTI
+// ══════════════════════════════════════════════
 async function loadAllSingers() {
   try {
     const [s1, s2] = await Promise.all([
@@ -96,11 +92,13 @@ async function saveSingers(serata) {
   await setDoc(doc(db,'singers',`s${serata}`), { list, updatedAt: serverTimestamp() });
   singers[serata] = list;
   showToast(`Cantanti Serata ${serata} salvati ✓`);
+  closeOverlay('overlay-singers');
 }
 
 function renderSingersEditor(serata) {
   const container = document.getElementById(`singers-editor-s${serata}`);
-  const list      = singers[serata];
+  if (!container) return;
+  const list = singers[serata];
   container.innerHTML = list.map((name,i) => `
     <div class="singer-edit-row">
       <span class="singer-edit-num">${i+1}</span>
@@ -111,25 +109,25 @@ function renderSingersEditor(serata) {
     </button>`;
 }
 
-// ── Render pannello admin ─────────────────────
+// ══════════════════════════════════════════════
+//  RENDER PANNELLO
+// ══════════════════════════════════════════════
 function renderAdminPanel(user) {
   const name = user.displayName || user.email || 'Admin';
   const init = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
   document.getElementById('admin-user-initials').textContent = init;
   document.getElementById('admin-user-name').textContent     = name.split(' ')[0];
-  updateSerataButtons();
+  updateSerataLabel();
   updateSwitches();
-  renderSingersEditor(1);
-  renderSingersEditor(2);
   refreshRanking();
 }
 
-function updateSerataButtons() {
-  [1,2,3].forEach(i => {
-    document.getElementById(`btn-s${i}`)?.classList.toggle('active', i === currentSerata);
-  });
-  const revealBtn = document.getElementById('btn-reveal-wrap');
-  if (revealBtn) revealBtn.style.display = currentSerata === 3 ? '' : 'none';
+function updateSerataLabel() {
+  const el = document.getElementById('current-serata-label');
+  if (el) el.textContent = SERATA_LABELS[currentSerata];
+  // Mostra/nascondi tasto classifica finale Z-score
+  const zBtn = document.getElementById('btn-zscore-wrap');
+  if (zBtn) zBtn.style.display = currentSerata === 3 ? '' : 'none';
 }
 
 function updateSwitches() {
@@ -142,11 +140,48 @@ function updateSwitches() {
 }
 
 function setSwitchState(id, state) {
-  const input = document.getElementById(id);
-  if (input) input.checked = state;
+  const el = document.getElementById(id);
+  if (el) el.checked = state;
 }
 
-// ── Switch handlers ───────────────────────────
+// ══════════════════════════════════════════════
+//  SERATA — con conferma overlay
+// ══════════════════════════════════════════════
+let pendingSerata = null;
+
+function openSerataChooser() {
+  // Aggiorna bottoni nell'overlay
+  [1,2,3].forEach(i =>
+    document.getElementById(`ov-s${i}`)?.classList.toggle('active', i === currentSerata)
+  );
+  pendingSerata = null;
+  document.getElementById('btn-confirm-serata').disabled = true;
+  openOverlay('overlay-serata');
+}
+
+function selectPendingSerata(n) {
+  pendingSerata = n;
+  [1,2,3].forEach(i => {
+    const b = document.getElementById(`ov-s${i}`);
+    if (b) b.classList.toggle('active', i === n);
+  });
+  document.getElementById('btn-confirm-serata').disabled = (n === currentSerata);
+}
+
+async function confirmSerataChange() {
+  if (!pendingSerata || pendingSerata === currentSerata) return;
+  closeOverlay('overlay-serata');
+  currentSerata = pendingSerata;
+  await saveConfig({ serata: currentSerata });
+  updateSerataLabel();
+  updateSwitches();
+  refreshRanking();
+  showToast(`✓ ${SERATA_LABELS[currentSerata]} attivata`);
+}
+
+// ══════════════════════════════════════════════
+//  SWITCH HANDLERS
+// ══════════════════════════════════════════════
 async function toggleVoto(checked) {
   await saveConfig({ votoAperto: checked });
   if (checked) await saveConfig({ mostraTop5: false, svelaClassifica: false });
@@ -169,36 +204,32 @@ async function toggleSvela(checked) {
   showToast(checked ? '🏆 Classifica svelata al pubblico' : 'Classifica nascosta');
 }
 
-// ── Serata switcher ───────────────────────────
-async function setSerata(n) {
-  currentSerata = n;
-  await saveConfig({ serata: n });
-  updateSerataButtons();
-  updateSwitches();
-  refreshRanking();
-  showToast(`Serata ${n === 3 ? 'Finale' : n} attivata`);
-}
-
-// ── Classifica live ───────────────────────────
+// ══════════════════════════════════════════════
+//  CLASSIFICA LIVE (punteggi grezzi serata)
+// ══════════════════════════════════════════════
 async function refreshRanking() {
   const rows = document.getElementById('admin-ranking-rows');
   if (!rows) return;
   rows.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted)">Caricamento…</div>';
   try {
-    const snap        = await getDocs(collection(db, `votes_s${currentSerata}`));
-    const allVotes    = []; snap.forEach(d => allVotes.push(d.data()));
-    const activeSingers = currentSerata === 3
+    const snap      = await getDocs(collection(db, `votes_s${currentSerata}`));
+    const allVotes  = []; snap.forEach(d => allVotes.push(d.data()));
+    const active    = currentSerata === 3
       ? [...singers[1], ...singers[2]]
       : singers[currentSerata];
+
     const scores = {};
-    activeSingers.forEach(s => scores[s] = 0);
+    active.forEach(s => scores[s] = 0);
     allVotes.forEach(({vote}) =>
       vote?.forEach((name,i) => { if (scores[name] !== undefined) scores[name] += POINTS[i]; })
     );
+
     const ranking = Object.entries(scores).sort((a,b) => b[1]-a[1]);
     const maxPts  = ranking[0]?.[1] || 1;
+
     document.getElementById('stat-votes').textContent = allVotes.length;
     document.getElementById('stat-label').textContent = `Voti — ${SERATA_LABELS[currentSerata]}`;
+
     rows.innerHTML = '';
     ranking.forEach(([name,pts],i) => {
       const pct = maxPts > 0 ? (pts/maxPts*100).toFixed(0) : 0;
@@ -218,7 +249,84 @@ async function refreshRanking() {
   }
 }
 
-// ── Export CSV ────────────────────────────────
+// ══════════════════════════════════════════════
+//  CLASSIFICA FINALE Z-SCORE
+// ══════════════════════════════════════════════
+function calcZScores(votes, singerList) {
+  // Punteggi grezzi
+  const raw = {};
+  singerList.forEach(s => raw[s] = 0);
+  votes.forEach(({vote}) =>
+    vote?.forEach((name,i) => { if (raw[name] !== undefined) raw[name] += POINTS[i]; })
+  );
+  const vals  = Object.values(raw);
+  const mean  = vals.reduce((a,b) => a+b, 0) / vals.length;
+  const std   = Math.sqrt(vals.reduce((a,b) => a + (b-mean)**2, 0) / vals.length);
+  const zMap  = {};
+  singerList.forEach(s => zMap[s] = std > 0 ? (raw[s] - mean) / std : 0);
+  return zMap;
+}
+
+async function computeAndShowFinalRanking() {
+  const rows = document.getElementById('admin-final-rows');
+  if (!rows) return;
+  rows.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted)">Calcolo in corso…</div>';
+  openOverlay('overlay-final');
+
+  try {
+    const [snap1, snap2, snap3] = await Promise.all([
+      getDocs(collection(db,'votes_s1')),
+      getDocs(collection(db,'votes_s2')),
+      getDocs(collection(db,'votes_s3'))
+    ]);
+    const v1=[], v2=[], v3=[];
+    snap1.forEach(d=>v1.push(d.data()));
+    snap2.forEach(d=>v2.push(d.data()));
+    snap3.forEach(d=>v3.push(d.data()));
+
+    const z1 = calcZScores(v1, singers[1]);
+    const z2 = calcZScores(v2, singers[2]);
+    const z3 = calcZScores(v3, [...singers[1], ...singers[2]]);
+
+    // Combina: ogni cantante ha z dalla propria serata + z dalla finale
+    const allSingers = [...singers[1], ...singers[2]];
+    const combined = allSingers.map(name => {
+      const zSerata = singers[1].includes(name) ? (z1[name]||0) : (z2[name]||0);
+      const zFinale = z3[name] || 0;
+      return { name, zSerata, zFinale, zTot: zSerata + zFinale };
+    }).sort((a,b) => b.zTot - a.zTot);
+
+    rows.innerHTML = '';
+    combined.forEach((c,i) => {
+      const r = document.createElement('div');
+      r.className = 'ranking-row';
+      r.style.gridTemplateColumns = '40px 1fr 90px';
+      r.innerHTML = `
+        <span class="r-pos">${i+1}</span>
+        <div style="min-width:0">
+          <div class="r-name">${c.name}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">
+            Serata: ${c.zSerata.toFixed(3)} &nbsp;|&nbsp; Finale: ${c.zFinale.toFixed(3)}
+          </div>
+        </div>
+        <span class="r-pts" style="font-size:13px">${c.zTot.toFixed(3)}</span>`;
+      rows.appendChild(r);
+    });
+
+    // Salva su Firestore per mostrarla anche al pubblico
+    await setDoc(doc(db,'config','finalRanking'), {
+      ranking: combined.map(c => ({ name: c.name, zTot: c.zTot })),
+      computedAt: serverTimestamp()
+    });
+
+  } catch(e) {
+    rows.innerHTML = '<div style="padding:20px;text-align:center;color:var(--red)">Errore: ' + e.message + '</div>';
+  }
+}
+
+// ══════════════════════════════════════════════
+//  EXPORT CSV
+// ══════════════════════════════════════════════
 async function exportCSV() {
   try {
     const snap = await getDocs(collection(db, `votes_s${currentSerata}`));
@@ -236,9 +344,11 @@ async function exportCSV() {
   } catch(e) { showToast('Errore esportazione'); }
 }
 
-// ── Reset voti ────────────────────────────────
+// ══════════════════════════════════════════════
+//  RESET VOTI
+// ══════════════════════════════════════════════
 async function resetVotes() {
-  document.getElementById('overlay-reset').style.display = 'none';
+  closeOverlay('overlay-reset');
   try {
     const snap = await getDocs(collection(db, `votes_s${currentSerata}`));
     await Promise.all(snap.docs.map(d => deleteDoc(doc(db, `votes_s${currentSerata}`, d.id))));
@@ -247,15 +357,36 @@ async function resetVotes() {
   } catch(e) { showToast('Errore durante il reset'); }
 }
 
-// ── Expose to window ──────────────────────────
-window.setSerataAdmin   = setSerata;
-window.toggleVoto       = e => toggleVoto(e.target.checked);
-window.toggleTop5       = e => toggleTop5(e.target.checked);
-window.toggleSvela      = e => toggleSvela(e.target.checked);
-window.refreshRanking   = refreshRanking;
-window.exportCSV        = exportCSV;
-window.confirmReset     = () => document.getElementById('overlay-reset').style.display = 'flex';
-window.resetVotes       = resetVotes;
-window.saveSingersAdmin = saveSingers;
-window.signOutAdmin     = signOutUser;
-window.cancelReset      = () => document.getElementById('overlay-reset').style.display = 'none';
+// ══════════════════════════════════════════════
+//  SIGN OUT — ricarica la pagina dopo logout
+// ══════════════════════════════════════════════
+async function adminSignOut() {
+  await signOutUser();
+  window.location.reload();
+}
+
+// ══════════════════════════════════════════════
+//  OVERLAY HELPERS
+// ══════════════════════════════════════════════
+function openOverlay(id)  { const el = document.getElementById(id); if(el) el.style.display='flex'; }
+function closeOverlay(id) { const el = document.getElementById(id); if(el) el.style.display='none'; }
+
+// ══════════════════════════════════════════════
+//  EXPOSE TO WINDOW
+// ══════════════════════════════════════════════
+window.openSerataChooser      = openSerataChooser;
+window.selectPendingSerata    = selectPendingSerata;
+window.confirmSerataChange    = confirmSerataChange;
+window.closeOverlay           = closeOverlay;
+window.toggleVoto             = e => toggleVoto(e.target.checked);
+window.toggleTop5             = e => toggleTop5(e.target.checked);
+window.toggleSvela            = e => toggleSvela(e.target.checked);
+window.refreshRanking         = refreshRanking;
+window.computeAndShowFinalRanking = computeAndShowFinalRanking;
+window.exportCSV              = exportCSV;
+window.confirmReset           = () => openOverlay('overlay-reset');
+window.resetVotes             = resetVotes;
+window.saveSingersAdmin       = saveSingers;
+window.openSingersEditor      = (s) => { renderSingersEditor(s); openOverlay('overlay-singers'); window._editingSerata = s; };
+window.saveSingersOverlay     = () => saveSingers(window._editingSerata);
+window.signOutAdmin           = adminSignOut;

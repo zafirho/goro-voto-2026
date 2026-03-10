@@ -6,30 +6,31 @@ import {
   DEFAULT_SINGERS, POINTS, SERATA_LABELS
 } from './firebase-init.js';
 import { isAdmin } from './auth.js';
-import { onAuthStateChanged }  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {
-  doc, getDoc, setDoc,
-  collection, onSnapshot,
-  serverTimestamp
+  doc, getDoc, setDoc, getDocs,
+  collection, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-// ── Stato globale ─────────────────────────────
+// ── Stato ─────────────────────────────────────
 let currentUser   = null;
 let currentSerata = 1;
-let singers       = [];           // cantanti serata corrente
-let selections    = [null,null,null,null,null];
-let appConfig     = {};           // config/current da Firestore
-let unsubConfig   = null;         // listener config
+let singers       = [];
+let selections    = [null,null,null,null,null]; // null = vuoto, altrimenti indice cantante
+let appConfig     = {};
+let unsubConfig   = null;
 
-// ── Entry point ───────────────────────────────
+// ══════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════
 export async function initVoteApp() {
-  // Ascolta config in tempo reale (per switch apertura/chiusura voto)
+  const { onSnapshot } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+
   unsubConfig = onSnapshot(doc(db,'config','current'), snap => {
     if (snap.exists()) {
-      appConfig = snap.data();
+      appConfig     = snap.data();
       currentSerata = appConfig.serata || 1;
       updateSerataUI();
-      // Se utente è già loggato, ri-valuta lo stato
       if (currentUser) evaluateState(currentUser);
     }
   });
@@ -42,27 +43,21 @@ export async function initVoteApp() {
 }
 
 async function evaluateState(user) {
-  // Admin → redirect a admin.html
   if (await isAdmin(user.uid)) {
     window.location.href = 'admin.html';
     return;
   }
-
-  // Carica cantanti da Firestore
   await loadSingers();
   updateSerataUI();
 
-  // Voto chiuso?
   if (!appConfig.votoAperto) {
     await showClosedScreen();
     return;
   }
 
-  // Già votato questa serata?
-  const voted = (await getDoc(doc(db, `votes_s${currentSerata}`, user.uid))).exists();
-  if (voted) {
-    const d = (await getDoc(doc(db, `votes_s${currentSerata}`, user.uid))).data();
-    renderSummaryTable('already-summary', d.vote);
+  const voteSnap = await getDoc(doc(db, `votes_s${currentSerata}`, user.uid));
+  if (voteSnap.exists()) {
+    renderSummaryTable('already-summary', voteSnap.data().vote);
     showScreen('screen-already');
   } else {
     setupVotingScreen(user);
@@ -70,30 +65,32 @@ async function evaluateState(user) {
   }
 }
 
-// ── Closed screen ─────────────────────────────
+// ══════════════════════════════════════════════
+//  SCHERMATA CHIUSA
+// ══════════════════════════════════════════════
 async function showClosedScreen() {
+  // Classifica svelata?
+  if (appConfig.svelaClassifica && currentSerata === 3) {
+    await renderReveal();
+    showScreen('screen-reveal');
+    return;
+  }
+
   const el = document.getElementById('closed-dynamic');
-
   if (appConfig.mostraTop5) {
-    // Calcola top 5 e li mostra in ordine casuale
-    const snap    = await collection(db, `votes_s${currentSerata}`);
-    const allVotes = [];
-    const voteSnap = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js")
-      .then(m => m.getDocs(collection(db, `votes_s${currentSerata}`)));
-
-    voteSnap.forEach(d => allVotes.push(d.data()));
+    const { getDocs } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    const snap     = await getDocs(collection(db, `votes_s${currentSerata}`));
+    const allVotes = []; snap.forEach(d => allVotes.push(d.data()));
 
     const scores = {};
     singers.forEach(s => scores[s] = 0);
     allVotes.forEach(({vote}) =>
       vote?.forEach((name,i) => { if (scores[name] !== undefined) scores[name] += POINTS[i]; })
     );
-
     const top5 = Object.entries(scores)
-      .sort((a,b) => b[1]-a[1])
-      .slice(0,5)
+      .sort((a,b) => b[1]-a[1]).slice(0,5)
       .map(([name]) => name)
-      .sort(() => Math.random() - 0.5); // ordine casuale
+      .sort(() => Math.random() - 0.5);
 
     el.innerHTML = `
       <div class="top5-section">
@@ -107,42 +104,48 @@ async function showClosedScreen() {
   } else {
     el.innerHTML = '';
   }
-
-  // Classifica svelata (solo serata 3)?
-  if (appConfig.svelaClassifica && currentSerata === 3) {
-    showScreen('screen-reveal');
-    await renderReveal();
-    return;
-  }
-
   showScreen('screen-closed');
 }
 
 async function renderReveal() {
-  // Mostra classifica finale vera
-  const snap = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js")
-    .then(m => m.getDocs(collection(db, 'votes_s3')));
-  const allVotes = [];
-  snap.forEach(d => allVotes.push(d.data()));
-  const scores = {};
-  singers.forEach(s => scores[s] = 0);
+  // Usa classifica Z-score salvata da admin se disponibile
+  try {
+    const saved = await getDoc(doc(db,'config','finalRanking'));
+    if (saved.exists()) {
+      const ranking = saved.data().ranking;
+      const labels  = ['🥇','🥈','🥉','4°','5°','6°','7°','8°','9°','10°','11°','12°','13°','14°'];
+      document.getElementById('reveal-ranking').innerHTML =
+        ranking.map((c,i) => `
+          <div class="summary-row">
+            <span class="s-rank" style="font-size:20px">${labels[i]||''}</span>
+            <span class="s-name">${c.name}</span>
+          </div>`).join('');
+      return;
+    }
+  } catch(e) {}
+
+  // Fallback: punteggi grezzi serata 3
+  const snap = await getDocs(collection(db,'votes_s3'));
+  const allVotes = []; snap.forEach(d => allVotes.push(d.data()));
+  const scores   = {}; singers.forEach(s => scores[s] = 0);
   allVotes.forEach(({vote}) =>
     vote?.forEach((name,i) => { if(scores[name]!==undefined) scores[name]+=POINTS[i]; })
   );
   const ranking = Object.entries(scores).sort((a,b)=>b[1]-a[1]);
   const labels  = ['🥇','🥈','🥉','4°','5°','6°','7°','8°','9°','10°','11°','12°','13°','14°'];
-  const el = document.getElementById('reveal-ranking');
-  el.innerHTML = ranking.map(([name,pts],i) => `
-    <div class="summary-row">
-      <span class="s-rank" style="font-size:20px">${labels[i]||''}</span>
-      <span class="s-name">${name}</span>
-    </div>`).join('');
+  document.getElementById('reveal-ranking').innerHTML =
+    ranking.map(([name],i) => `
+      <div class="summary-row">
+        <span class="s-rank" style="font-size:20px">${labels[i]||''}</span>
+        <span class="s-name">${name}</span>
+      </div>`).join('');
 }
 
-// ── Cantanti da Firestore ─────────────────────
+// ══════════════════════════════════════════════
+//  CANTANTI
+// ══════════════════════════════════════════════
 async function loadSingers() {
   try {
-    const sn = currentSerata === 3 ? 's1' : `s${currentSerata}`;
     if (currentSerata === 3) {
       const [s1, s2] = await Promise.all([
         getDoc(doc(db,'singers','s1')),
@@ -163,13 +166,14 @@ async function loadSingers() {
   }
 }
 
-// ── UI helpers ────────────────────────────────
+// ══════════════════════════════════════════════
+//  UI
+// ══════════════════════════════════════════════
 function updateSerataUI() {
   const lbl = SERATA_LABELS[currentSerata] || '';
-  const h = document.getElementById('hero-serata-label');
+  const h   = document.getElementById('hero-serata-label');
   if (h) h.textContent = appConfig.votoAperto !== false
-    ? `In corso: ${lbl}`
-    : `${lbl} — Votazioni chiuse`;
+    ? `In corso: ${lbl}` : `${lbl} — Votazioni chiuse`;
   const v = document.getElementById('serata-label-voting');
   if (v) v.textContent = lbl;
 }
@@ -183,32 +187,20 @@ function setupVotingScreen(user) {
     isPhone ? ('…'+name.slice(-4)) : name.split(' ')[0];
 
   selections = [null,null,null,null,null];
-  renderSlots();
-  renderSingers();
-  updateProgress();
+  renderSingers();   // nomi prima
+  renderSlots();     // classifica sotto
+  updateAll();
 }
 
-function renderSlots() {
-  const c = document.getElementById('slots');
-  c.innerHTML = '';
-  ['1°','2°','3°','4°','5°'].forEach((lbl,i) => {
-    const d = document.createElement('div');
-    d.className = 'slot'; d.dataset.pos = i;
-    d.innerHTML = `
-      <span class="slot-rank">${lbl}</span>
-      <span class="slot-name slot-empty">Tocca un cantante</span>
-      <button class="slot-remove" onclick="removeFromSlot(${i})" aria-label="Rimuovi">✕</button>`;
-    c.appendChild(d);
-  });
-}
-
+// ── Cantanti (in cima) ────────────────────────
 function renderSingers() {
   const grid = document.getElementById('singers-grid');
   grid.innerHTML = '';
   singers.forEach((name,i) => {
     const ini = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-    const d = document.createElement('div');
-    d.className = 'singer-card'; d.id = `sc-${i}`; d.onclick = () => selectSinger(i);
+    const d   = document.createElement('div');
+    d.className = 'singer-card'; d.id = `sc-${i}`;
+    d.onclick   = () => toggleSinger(i);
     d.innerHTML = `
       <div class="singer-avatar av-${(i%16)+1}">${ini}</div>
       <div class="singer-name">${name}</div>
@@ -217,11 +209,41 @@ function renderSingers() {
   });
 }
 
-// ── Selection logic ────────────────────────────
-function selectSinger(idx) {
-  const next = selections.indexOf(null);
-  if (next === -1) { showToast('Hai già scelto 5 cantanti'); return; }
-  selections[next] = idx;
+// ── Slot riepilogo (sotto) ────────────────────
+function renderSlots() {
+  const c = document.getElementById('slots');
+  c.innerHTML = '';
+  ['1°','2°','3°','4°','5°'].forEach((lbl,i) => {
+    const d = document.createElement('div');
+    d.className = 'slot slot-medal-' + (i+1); d.dataset.pos = i;
+    d.innerHTML = `
+      <div class="slot-medal">${getMedal(i)}</div>
+      <span class="slot-name slot-empty">—</span>
+      <button class="slot-remove" onclick="removeFromSlot(${i})" aria-label="Rimuovi">✕</button>`;
+    c.appendChild(d);
+  });
+}
+
+function getMedal(i) {
+  const medals = ['🥇','🥈','🥉','4°','5°'];
+  return medals[i];
+}
+
+// ══════════════════════════════════════════════
+//  SELEZIONE — toggle: click aggiunge, click di
+//  nuovo rimuove (come il pulsante X)
+// ══════════════════════════════════════════════
+function toggleSinger(idx) {
+  const pos = selections.indexOf(idx);
+  if (pos !== -1) {
+    // Già selezionato → rimuovi
+    selections[pos] = null;
+  } else {
+    // Non selezionato → aggiungi al primo slot libero
+    const next = selections.indexOf(null);
+    if (next === -1) { showToast('Hai già scelto 5 cantanti'); return; }
+    selections[next] = idx;
+  }
   updateAll();
 }
 
@@ -231,8 +253,10 @@ function removeFromSlot(pos) {
 }
 
 function updateAll() {
+  // Aggiorna slot
   selections.forEach((idx,i) => {
     const slot   = document.querySelector(`.slot[data-pos="${i}"]`);
+    if (!slot) return;
     const nameEl = slot.querySelector('.slot-name');
     if (idx !== null) {
       slot.classList.add('filled');
@@ -240,11 +264,12 @@ function updateAll() {
       nameEl.classList.remove('slot-empty');
     } else {
       slot.classList.remove('filled');
-      nameEl.textContent = 'Tocca un cantante';
+      nameEl.textContent = '—';
       nameEl.classList.add('slot-empty');
     }
   });
 
+  // Aggiorna cards cantanti
   const anyNull = selections.includes(null);
   singers.forEach((_,i) => {
     const card  = document.getElementById(`sc-${i}`);
@@ -252,7 +277,8 @@ function updateAll() {
     if (!card) return;
     const pos = selections.indexOf(i);
     if (pos !== -1) {
-      card.classList.add('selected'); card.classList.remove('full');
+      card.classList.add('selected');
+      card.classList.remove('full');
       badge.textContent = pos + 1;
     } else {
       card.classList.remove('selected');
@@ -260,6 +286,7 @@ function updateAll() {
       badge.textContent = '';
     }
   });
+
   updateProgress();
 }
 
@@ -270,7 +297,9 @@ function updateProgress() {
   document.getElementById('btn-submit').disabled = filled < 5 || selections.includes(null);
 }
 
-// ── Submit ────────────────────────────────────
+// ══════════════════════════════════════════════
+//  SUBMIT
+// ══════════════════════════════════════════════
 async function submitVote() {
   if (!currentUser) return;
   const vote = selections.map(i => singers[i]);
@@ -278,10 +307,8 @@ async function submitVote() {
   btn.disabled = true; btn.textContent = 'Salvataggio…';
   try {
     await setDoc(doc(db, `votes_s${currentSerata}`, currentUser.uid), {
-      vote,
-      uid:       currentUser.uid,
-      serata:    currentSerata,
-      name:      currentUser.displayName || currentUser.phoneNumber || currentUser.email || 'Ospite',
+      vote, uid: currentUser.uid, serata: currentSerata,
+      name: currentUser.displayName || currentUser.phoneNumber || currentUser.email || 'Ospite',
       timestamp: serverTimestamp()
     });
     renderSummaryTable('thanks-summary', vote);
@@ -294,17 +321,17 @@ async function submitVote() {
 
 // ── Summary table ─────────────────────────────
 export function renderSummaryTable(id, vote) {
-  const lbls = ['1°','2°','3°','4°','5°'];
+  const medals = ['🥇','🥈','🥉','4°','5°'];
   document.getElementById(id).innerHTML =
     `<div class="summary-label">Il tuo voto — ${SERATA_LABELS[currentSerata]}</div>` +
     vote.map((n,i) => `
       <div class="summary-row">
-        <span class="s-rank">${lbls[i]}</span>
+        <span class="s-rank" style="font-size:22px">${medals[i]}</span>
         <span class="s-name">${n}</span>
       </div>`).join('');
 }
 
-// ── Expose to window ──────────────────────────
-window.selectSinger  = selectSinger;
+// ── Expose ────────────────────────────────────
+window.toggleSinger   = toggleSinger;
 window.removeFromSlot = removeFromSlot;
-window.submitVote    = submitVote;
+window.submitVote     = submitVote;
