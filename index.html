@@ -90,7 +90,7 @@
   <div id="closed-random-note" style="display:none;margin-top:16px;font-size:12px;color:var(--muted);text-align:center;max-width:280px;line-height:1.6">
     I preferiti sono mostrati in <strong style="color:var(--gold)">ordine casuale</strong> — non riflettono la classifica reale.<br>
     Non includono le votazioni della giuria tecnica.<br>
-    <span style="opacity:.7">🔄 Ricarica la pagina per vedere un ordine diverso</span>
+    <span style="opacity:.7"><a onclick="location.reload()" style="color:var(--gold);cursor:pointer;text-decoration:underline">🔄 Ricarica la pagina</a> per vedere un ordine diverso</span>
   </div>
 </div>
 
@@ -102,11 +102,9 @@
   <h2 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:900;animation:fadeDown .5s .1s ease both">
     Classifica <span style="color:var(--gold)">Finale</span>
   </h2>
-  <p style="color:var(--muted);font-size:12px;margin-top:6px;margin-bottom:4px;animation:fadeDown .5s .15s ease both;max-width:280px;text-align:center">
-    VOTAZIONI DEL PUBBLICO
-  </p>
-  <p style="color:var(--muted);font-size:11px;margin-bottom:20px;animation:fadeDown .5s .2s ease both;max-width:280px;text-align:center;opacity:.7">
-    Punteggi normalizzati — non includono le votazioni della giuria tecnica
+  <p style="font-size:13px;margin-top:8px;margin-bottom:20px;animation:fadeDown .5s .15s ease both;max-width:300px;text-align:center;line-height:1.6;color:var(--muted)">
+    Classifica delle <strong style="color:var(--gold)">votazioni del pubblico</strong><br>
+    <span style="font-size:11px;opacity:.7">Non include le votazioni della giuria tecnica</span>
   </p>
   <div class="summary-table" id="reveal-ranking" style="animation:fadeUp .5s .3s ease both"></div>
 </div>
@@ -158,7 +156,7 @@
   <!-- Submit bar -->
   <div class="submit-bar">
     <div class="submit-bar-inner">
-      <button class="btn-submit" id="btn-submit" disabled onclick="submitVote()">
+      <button class="btn-submit" id="btn-submit" disabled onclick="showConfirmOverlay()">
         Conferma il voto 🎤
       </button>
     </div>
