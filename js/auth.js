@@ -30,6 +30,7 @@ export function showPhoneAuth() {
   showScreen('screen-phone');
   document.getElementById('phone-step-1').style.display = '';
   document.getElementById('phone-step-2').style.display = 'none';
+  document.body.classList.add('show-recaptcha');
 }
 
 // Ottieni token reCAPTCHA Enterprise, con attesa se lo script non è ancora pronto
@@ -83,7 +84,7 @@ export async function sendSMS() {
     if (e.code === 'auth/too-many-requests')      msg = 'Troppi tentativi. Riprova tra qualche minuto.';
     if (e.code === 'auth/captcha-check-failed')   msg = 'Verifica reCAPTCHA fallita. Ricarica la pagina.';
     if (e.code === 'auth/quota-exceeded')         msg = 'Quota SMS esaurita per oggi.';
-    showToast(msg);
+    showToast(msg + ' [' + (e.code||e.message) + ']');
     btn.disabled = false; btn.textContent = 'Invia SMS';
   }
 }
@@ -132,9 +133,14 @@ export function backToPhoneStep1() {
   btn.disabled = false; btn.textContent = 'Invia SMS';
 }
 
+function hideRecaptchaBadge() {
+  document.body.classList.remove('show-recaptcha');
+}
+
 // ── Sign Out ──────────────────────────────────
 export async function signOutUser() {
   await fbSignOut(auth);
+  hideRecaptchaBadge();
   showScreen('screen-hero');
 }
 
@@ -151,5 +157,5 @@ window.signInWithGoogle  = signInWithGoogle;
 window.showPhoneAuth     = showPhoneAuth;
 window.sendSMS           = sendSMS;
 window.verifyOTP         = verifyOTP;
-window.backToPhoneStep1  = backToPhoneStep1;
+window.backToPhoneStep1  = () => { hideRecaptchaBadge(); backToPhoneStep1(); };
 window.signOutUser       = signOutUser;
