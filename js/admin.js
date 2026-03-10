@@ -267,11 +267,27 @@ function calcZScores(votes, singerList) {
   return zMap;
 }
 
+async function showFinalRanking() {
+  openOverlay('overlay-final');
+  const rows = document.getElementById('admin-final-rows');
+  if (!rows) return;
+  rows.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted)">Caricamento…</div>';
+  // Prima prova a caricare da Firestore
+  try {
+    const saved = await getDoc(doc(db,'config','finalRanking'));
+    if (saved.exists()) {
+      renderFinalRows(rows, saved.data().ranking);
+      return;
+    }
+  } catch(e) {}
+  // Non trovata — calcola
+  await computeAndShowFinalRanking();
+}
+
 async function computeAndShowFinalRanking() {
   const rows = document.getElementById('admin-final-rows');
   if (!rows) return;
   rows.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted)">Calcolo in corso…</div>';
-  openOverlay('overlay-final');
 
   try {
     const [snap1, snap2, snap3] = await Promise.all([
@@ -313,15 +329,38 @@ async function computeAndShowFinalRanking() {
       rows.appendChild(r);
     });
 
-    // Salva su Firestore per mostrarla anche al pubblico
+    // Salva su Firestore
+    const rankingData = combined.map(c => ({ name: c.name, zTot: c.zTot }));
     await setDoc(doc(db,'config','finalRanking'), {
-      ranking: combined.map(c => ({ name: c.name, zTot: c.zTot })),
+      ranking: rankingData,
       computedAt: serverTimestamp()
     });
+    renderFinalRows(rows, rankingData);
 
   } catch(e) {
     rows.innerHTML = '<div style="padding:20px;text-align:center;color:var(--red)">Errore: ' + e.message + '</div>';
   }
+}
+
+function renderFinalRows(rows, ranking) {
+  rows.innerHTML = '';
+  ranking.forEach((c,i) => {
+    const r = document.createElement('div');
+    r.className = 'ranking-row';
+    r.style.gridTemplateColumns = '40px 1fr 90px';
+    r.innerHTML = `
+      <span class="r-pos">${i+1}</span>
+      <div style="min-width:0">
+        <div class="r-name">${c.name}</div>
+      </div>
+      <span class="r-pts" style="font-size:13px">${Number(c.zTot).toFixed(3)}</span>`;
+    rows.appendChild(r);
+  });
+  // Aggiungi pulsante ricalcola in fondo
+  const btn = document.createElement('div');
+  btn.style = 'padding:12px 16px;border-top:1px solid rgba(255,255,255,.06)';
+  btn.innerHTML = '<button onclick="computeAndShowFinalRanking()" style="background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;font-family:DM Sans,sans-serif">↻ Ricalcola</button>';
+  rows.appendChild(btn);
 }
 
 // ══════════════════════════════════════════════
@@ -358,10 +397,11 @@ async function resetVotes() {
 }
 
 // ══════════════════════════════════════════════
-//  SIGN OUT — ricarica la pagina dopo logout
+//  SIGN OUT — directo, poi reload
 // ══════════════════════════════════════════════
 async function adminSignOut() {
-  await signOutUser();
+  const { signOut } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
+  await signOut(auth);
   window.location.reload();
 }
 
@@ -382,11 +422,20 @@ window.toggleVoto             = e => toggleVoto(e.target.checked);
 window.toggleTop5             = e => toggleTop5(e.target.checked);
 window.toggleSvela            = e => toggleSvela(e.target.checked);
 window.refreshRanking         = refreshRanking;
-window.computeAndShowFinalRanking = computeAndShowFinalRanking;
+window.computeAndShowFinalRanking = showFinalRanking;
+window.recomputeFinalRanking = computeAndShowFinalRanking;
 window.exportCSV              = exportCSV;
 window.confirmReset           = () => openOverlay('overlay-reset');
 window.resetVotes             = resetVotes;
 window.saveSingersAdmin       = saveSingers;
-window.openSingersEditor      = (s) => { renderSingersEditor(s); openOverlay('overlay-singers'); window._editingSerata = s; };
+window.openSingersEditor = (s) => {
+  // Mostra solo l'editor della serata selezionata, nasconde l'altro
+  [1,2].forEach(n => {
+    const el = document.getElementById(`singers-editor-s${n}`);
+    if (el) el.style.display = n === s ? 'block' : 'none';
+  });
+  renderSingersEditor(s);
+  openOverlay('overlay-singers');
+};
 window.saveSingersOverlay     = () => saveSingers(window._editingSerata);
 window.signOutAdmin           = adminSignOut;
