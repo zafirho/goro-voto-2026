@@ -366,3 +366,33 @@ body.show-recaptcha .grecaptcha-badge { visibility: hidden !important; }
   opacity: .75;
   margin-bottom: -2px;
 }
+
+/* ── Edizione — solo testo, niente box ── */
+.hero-edition {
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+  opacity: .6;
+  margin-bottom: 0;
+}
+
+/* ── Copyright — non sovrasta submit bar ── */
+.copyright-bar {
+  position: relative !important;
+  margin-top: auto;
+  padding: 12px 0 16px;
+}
+
+/* Nelle schermate flex (hero, chiusa, grazie) resta fixed */
+.flex-screen .copyright-bar {
+  position: fixed !important;
+  bottom: 0; left: 0; right: 0;
+  padding: 6px 0 8px;
+  margin-top: 0;
+}
+
+/* ── Submit bar sopra il copyright ── */
+.submit-bar { margin-bottom: 28px; }
+.copyright-bar { z-index: 5 !important; }
+.btn-submit { position: relative; z-index: 6; }
