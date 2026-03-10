@@ -21,23 +21,19 @@
 <!-- ══ HERO ═════════════════════════════════════ -->
 <div class="screen flex-screen hero" id="screen-hero">
   <div class="hero-badge">🎵 Edizione 2026</div>
-
-  <!-- LOCANDINA: sostituisci il placeholder con il tag img quando hai il file
+  <!-- Locandina: sostituisci il placeholder con:
        <img src="img/locandina.jpg" alt="Goro Paese Canoro" class="hero-image"> -->
   <div class="hero-image-placeholder">
     <span style="font-size:32px">🎤</span>
     <span>Aggiungi la locandina</span>
     <span style="font-size:11px;opacity:.6">Vedi commento nel codice</span>
   </div>
-
   <h1>Goro<br><em>Paese Canoro</em></h1>
   <p class="hero-sub">Scegli i tuoi 5 cantanti preferiti dal primo all'ultimo</p>
-
   <div class="serata-chip">
     <div class="serata-dot"></div>
     <span id="hero-serata-label">Caricamento…</span>
   </div>
-
   <div class="hero-cta">
     <button class="btn-auth btn-google" onclick="signInWithGoogle()">
       <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
@@ -69,7 +65,6 @@
     <button class="btn-primary" id="btn-send-sms" onclick="sendSMS()">Invia SMS</button>
     <button class="btn-ghost" onclick="showScreen('screen-hero')">← Torna indietro</button>
   </div>
-
   <div id="phone-step-2" style="display:none">
     <h2>Codice <span>SMS</span></h2>
     <p id="otp-sent-to">Inserisci il codice a 6 cifre.</p>
@@ -91,34 +86,38 @@
   <div class="closed-icon">🎙️</div>
   <h2 class="closed-title">Votazioni <span>chiuse</span></h2>
   <p class="closed-sub">Le votazioni per questa serata sono terminate. Grazie per la partecipazione!</p>
-  <!-- Qui viene iniettato il top5 se abilitato dall'admin -->
   <div id="closed-dynamic"></div>
 </div>
 
-<!-- ══ CLASSIFICA SVELATA (solo finale) ══════════ -->
+<!-- ══ CLASSIFICA SVELATA ════════════════════════ -->
 <div class="screen flex-screen" id="screen-reveal"
      style="min-height:100svh;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 24px;position:relative;overflow:hidden;">
   <div style="position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 80% 60% at 50% 30%,rgba(201,168,76,.15) 0%,transparent 70%)"></div>
-  <div style="font-size:60px;margin-bottom:16px;animation:popIn .5s cubic-bezier(.175,.885,.32,1.275) both">🏆</div>
-  <h2 style="font-family:'Playfair Display',serif;font-size:30px;font-weight:900;animation:fadeDown .5s .1s ease both">
+  <div style="font-size:64px;margin-bottom:16px;animation:popIn .5s cubic-bezier(.175,.885,.32,1.275) both">🏆</div>
+  <h2 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:900;animation:fadeDown .5s .1s ease both">
     Classifica <span style="color:var(--gold)">Finale</span>
   </h2>
-  <p style="color:var(--muted);font-size:14px;margin-top:8px;margin-bottom:24px;animation:fadeDown .5s .2s ease both">
-    Goro Paese Canoro 2026 — Grazie a tutti!
+  <p style="color:var(--muted);font-size:12px;margin-top:6px;margin-bottom:4px;animation:fadeDown .5s .15s ease both;max-width:280px;text-align:center">
+    VOTAZIONI DEL PUBBLICO
+  </p>
+  <p style="color:var(--muted);font-size:11px;margin-bottom:20px;animation:fadeDown .5s .2s ease both;max-width:280px;text-align:center;opacity:.7">
+    Punteggi normalizzati — non includono le votazioni della giuria tecnica
   </p>
   <div class="summary-table" id="reveal-ranking" style="animation:fadeUp .5s .3s ease both"></div>
 </div>
 
-<!-- ══ ALREADY VOTED ═════════════════════════════ -->
+<!-- ══ GIÀ VOTATO ════════════════════════════════ -->
 <div class="screen flex-screen already-screen" id="screen-already">
-  <div style="font-size:60px;margin-bottom:20px">🗳️</div>
-  <h2>Hai già <span>votato!</span></h2>
-  <p>Il tuo voto per questa serata è registrato. Torna alla prossima serata!</p>
+  <div style="font-size:64px;margin-bottom:20px">🎵</div>
+  <h2>Voto <span>registrato!</span></h2>
+  <p>Grazie per aver partecipato a questa serata. Ci vediamo alla prossima!</p>
   <div class="summary-table" id="already-summary"></div>
 </div>
 
 <!-- ══ VOTING ════════════════════════════════════ -->
 <div class="screen voting-screen" id="screen-voting">
+
+  <!-- Header sticky -->
   <div class="voting-header">
     <div class="voting-header-top">
       <h2>I tuoi <span>5 preferiti</span></h2>
@@ -136,16 +135,19 @@
     </div>
   </div>
 
+  <!-- 1. Cantanti da selezionare (IN CIMA) -->
+  <div class="singers-section">
+    <div class="section-title">Tocca i cantanti per sceglierli • tocca di nuovo per rimuoverli</div>
+    <div class="singers-grid" id="singers-grid"></div>
+  </div>
+
+  <!-- 2. Riepilogo classifica (SOTTO) -->
   <div class="slots-section">
     <div class="section-title">La tua classifica</div>
     <div class="slots" id="slots"></div>
   </div>
 
-  <div class="singers-section">
-    <div class="section-title">Cantanti in gara stasera</div>
-    <div class="singers-grid" id="singers-grid"></div>
-  </div>
-
+  <!-- Submit bar -->
   <div class="submit-bar">
     <div class="submit-bar-inner">
       <button class="btn-submit" id="btn-submit" disabled onclick="submitVote()">
@@ -167,7 +169,6 @@
   import { generateStars, showScreen } from './js/firebase-init.js';
   import './js/auth.js';
   import { initVoteApp } from './js/vote.js';
-
   window.showScreen = showScreen;
   generateStars();
   initVoteApp();

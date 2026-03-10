@@ -33,9 +33,7 @@
       </svg>
       Accedi con Google
     </button>
-    <button class="btn-ghost" style="margin-top:16px" onclick="window.location.href='index.html'">
-      ← Torna al sito
-    </button>
+    <button class="btn-ghost" style="margin-top:16px" onclick="window.location.href='index.html'">← Torna al sito</button>
   </div>
 </div>
 
@@ -50,16 +48,20 @@
       <div class="user-avatar" id="admin-user-initials">?</div>
       <span id="admin-user-name">…</span>
     </div>
-    <button class="btn-icon" onclick="refreshRanking()" title="Aggiorna classifica">↻</button>
+    <button class="btn-icon" onclick="refreshRanking()" title="Aggiorna">↻</button>
   </div>
 
   <!-- ── 1. Serata attiva ── -->
   <div class="admin-section">
     <div class="admin-section-title">Serata attiva</div>
-    <div class="serata-switcher">
-      <button class="btn-serata" id="btn-s1" onclick="setSerataAdmin(1)">Serata 1</button>
-      <button class="btn-serata" id="btn-s2" onclick="setSerataAdmin(2)">Serata 2</button>
-      <button class="btn-serata" id="btn-s3" onclick="setSerataAdmin(3)">Finale</button>
+    <div style="display:flex;align-items:center;justify-content:space-between;background:var(--surf2);border-radius:var(--r);padding:16px 18px;">
+      <div>
+        <div style="font-size:15px;font-weight:500" id="current-serata-label">—</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">Serata corrente per il pubblico</div>
+      </div>
+      <button class="btn-secondary" style="width:auto;padding:10px 18px;border-radius:100px;font-size:14px" onclick="openSerataChooser()">
+        🔄 Cambia serata
+      </button>
     </div>
   </div>
 
@@ -67,8 +69,6 @@
   <div class="admin-section">
     <div class="admin-section-title">Controlli votazione</div>
     <div class="switches-grid">
-
-      <!-- Voto aperto/chiuso -->
       <div class="switch-row">
         <div class="switch-info">
           <span class="switch-label">Votazioni aperte</span>
@@ -79,39 +79,34 @@
           <span class="toggle-track"></span>
         </label>
       </div>
-
-      <!-- Mostra top 5 -->
       <div class="switch-row" id="toggle-top5-wrap">
         <div class="switch-info">
           <span class="switch-label">Mostra top 5 al pubblico</span>
           <span class="switch-desc">Visibile solo a voto chiuso, in ordine casuale</span>
         </div>
-        <label class="toggle" id="toggle-top5-label">
+        <label class="toggle">
           <input type="checkbox" id="toggle-top5" onchange="toggleTop5(event)">
           <span class="toggle-track"></span>
         </label>
       </div>
-
-      <!-- Svela classifica (solo finale) -->
       <div class="switch-row" id="toggle-svela-wrap">
         <div class="switch-info">
           <span class="switch-label">Svela classifica finale</span>
-          <span class="switch-desc">Mostra la classifica reale (solo Serata 3)</span>
+          <span class="switch-desc">Mostra la classifica reale al pubblico (solo Finale)</span>
         </div>
-        <label class="toggle" id="toggle-svela-label">
+        <label class="toggle">
           <input type="checkbox" id="toggle-svela" onchange="toggleSvela(event)">
           <span class="toggle-track"></span>
         </label>
       </div>
-
     </div>
   </div>
 
   <!-- ── 3. Classifica live ── -->
   <div class="admin-section">
     <div class="admin-section-title" style="display:flex;align-items:center;justify-content:space-between">
-      <span>Classifica live</span>
-      <button class="btn-ghost" style="font-size:12px;padding:4px 8px" onclick="refreshRanking()">Aggiorna</button>
+      <span>Classifica live serata</span>
+      <button class="btn-ghost" style="font-size:12px;padding:4px 8px" onclick="refreshRanking()">↻ Aggiorna</button>
     </div>
     <div class="stat-card" style="margin-bottom:12px">
       <div class="stat-value" id="stat-votes">–</div>
@@ -125,51 +120,87 @@
     </div>
   </div>
 
-  <!-- ── 4. Cantanti Serata 1 ── -->
-  <div class="admin-section">
-    <div class="admin-section-title">Cantanti — Serata 1</div>
-    <div class="singers-editor" id="singers-editor-s1">
-      <div style="padding:16px;text-align:center;color:var(--muted);font-size:13px">Caricamento…</div>
+  <!-- ── 4. Classifica finale Z-score (solo serata 3) ── -->
+  <div class="admin-section" id="btn-zscore-wrap" style="display:none">
+    <div class="admin-section-title">Classifica finale normalizzata</div>
+    <div style="background:var(--surf2);border-radius:var(--r);padding:16px 18px;">
+      <div style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.5">
+        Calcola la classifica usando la normalizzazione Z-score sulle tre serate. Disponibile solo a votazioni chiuse.
+      </div>
+      <button class="btn-secondary btn-reveal" onclick="computeAndShowFinalRanking()" style="width:100%;border-radius:100px">
+        🏆 Calcola classifica finale del pubblico
+      </button>
     </div>
   </div>
 
-  <!-- ── 5. Cantanti Serata 2 ── -->
+  <!-- ── 5. Azioni ── -->
   <div class="admin-section">
-    <div class="admin-section-title">Cantanti — Serata 2</div>
-    <div class="singers-editor" id="singers-editor-s2">
-      <div style="padding:16px;text-align:center;color:var(--muted);font-size:13px">Caricamento…</div>
-    </div>
-  </div>
-
-  <!-- ── 6. Azioni ── -->
-  <div class="admin-section">
-    <div class="admin-section-title">Azioni</div>
+    <div class="admin-section-title">Gestione</div>
     <div class="admin-actions">
-      <button class="btn-secondary" onclick="exportCSV()">
-        📥 Esporta CSV serata corrente
-      </button>
-      <button class="btn-secondary btn-danger" onclick="confirmReset()">
-        🗑️ Azzera voti serata corrente
-      </button>
-      <button class="btn-secondary" onclick="signOutAdmin()">
-        ← Esci dall'area admin
-      </button>
+      <button class="btn-secondary" onclick="openSingersEditor(1)">🎤 Modifica cantanti Serata 1</button>
+      <button class="btn-secondary" onclick="openSingersEditor(2)">🎤 Modifica cantanti Serata 2</button>
+      <button class="btn-secondary" onclick="exportCSV()">📥 Esporta CSV serata corrente</button>
+      <button class="btn-secondary btn-danger" onclick="confirmReset()">🗑️ Azzera voti serata corrente</button>
+      <button class="btn-secondary" onclick="signOutAdmin()">← Esci dall'area admin</button>
     </div>
   </div>
 
 </div><!-- /screen-admin -->
 
-<!-- ══ OVERLAY RESET ══════════════════════════════ -->
+<!-- ══ OVERLAY — CAMBIO SERATA ════════════════════ -->
+<div class="overlay" id="overlay-serata" style="display:none">
+  <div class="overlay-box">
+    <h3>Cambia serata</h3>
+    <p>Seleziona la serata da attivare per il pubblico. Richiede conferma.</p>
+    <div class="serata-switcher" style="margin-bottom:20px">
+      <button class="btn-serata" id="ov-s1" onclick="selectPendingSerata(1)">Serata 1</button>
+      <button class="btn-serata" id="ov-s2" onclick="selectPendingSerata(2)">Serata 2</button>
+      <button class="btn-serata" id="ov-s3" onclick="selectPendingSerata(3)">Finale</button>
+    </div>
+    <button class="btn-overlay-ok" id="btn-confirm-serata" onclick="confirmSerataChange()" disabled>
+      ✓ Conferma cambio
+    </button>
+    <button class="btn-overlay-cancel" onclick="closeOverlay('overlay-serata')">Annulla</button>
+  </div>
+</div>
+
+<!-- ══ OVERLAY — MODIFICA CANTANTI ════════════════ -->
+<div class="overlay" id="overlay-singers" style="display:none">
+  <div class="overlay-box" style="max-height:90vh;overflow-y:auto;max-width:380px">
+    <h3>Modifica cantanti</h3>
+    <p>Modifica i nomi e salva. Le modifiche saranno visibili ai votanti.</p>
+    <div class="singers-editor" id="singers-editor-s1" style="display:none"></div>
+    <div class="singers-editor" id="singers-editor-s2" style="display:none"></div>
+    <button class="btn-overlay-cancel" onclick="closeOverlay('overlay-singers')">Chiudi</button>
+  </div>
+</div>
+
+<!-- ══ OVERLAY — CLASSIFICA FINALE Z-SCORE ════════ -->
+<div class="overlay" id="overlay-final" style="display:none">
+  <div class="overlay-box" style="max-height:90vh;overflow-y:auto;max-width:420px">
+    <h3 style="color:var(--gold)">🏆 Classifica finale</h3>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:4px">
+      VOTAZIONI DEL PUBBLICO — punteggi normalizzati Z-score tra le tre serate
+    </p>
+    <div class="ranking-card" style="margin-bottom:16px">
+      <div class="ranking-head" style="grid-template-columns:40px 1fr 90px">
+        <span>#</span><span>Cantante</span><span style="text-align:right">Z-tot</span>
+      </div>
+      <div id="admin-final-rows"></div>
+    </div>
+    <button class="btn-overlay-cancel" onclick="closeOverlay('overlay-final')">Chiudi</button>
+  </div>
+</div>
+
+<!-- ══ OVERLAY — RESET ════════════════════════════ -->
 <div class="overlay" id="overlay-reset" style="display:none">
   <div class="overlay-box">
     <h3>Sei sicuro?</h3>
-    <p>I voti della serata corrente verranno eliminati definitivamente. L'operazione non è reversibile.</p>
-    <button class="btn-overlay-ok"
-            style="background:linear-gradient(135deg,#E85D5D,#a03030);color:#fff"
-            onclick="resetVotes()">
+    <p>I voti della serata corrente verranno eliminati definitivamente.</p>
+    <button class="btn-overlay-ok" style="background:linear-gradient(135deg,#E85D5D,#a03030);color:#fff" onclick="resetVotes()">
       Sì, azzera
     </button>
-    <button class="btn-overlay-cancel" onclick="cancelReset()">Annulla</button>
+    <button class="btn-overlay-cancel" onclick="closeOverlay('overlay-reset')">Annulla</button>
   </div>
 </div>
 
@@ -177,7 +208,6 @@
   import { generateStars, showScreen } from './js/firebase-init.js';
   import './js/auth.js';
   import { initAdminApp } from './js/admin.js';
-
   window.showScreen = showScreen;
   generateStars();
   initAdminApp();
